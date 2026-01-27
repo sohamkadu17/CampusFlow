@@ -1,14 +1,13 @@
 import { ArrowRight, Calendar, MapPin, BarChart3, Sparkles, CheckCircle2, Shield, Zap, Users } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import heroImage from './public/image.png';
 
 interface LandingPageProps {
-  onNavigate: (role: 'student' | 'organizer' | 'admin') => void;
+  onNavigate: (role: 'student' | 'organizer' | 'admin' | 'auth') => void;
 }
 
 export default function LandingPage({ onNavigate }: LandingPageProps) {
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(90deg, #abcef1ff 0%, #ebeff5ff 50%, #a9f9dcff 100%)' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(90deg, #abcef1ff 0%, #ebeff5ff 50%, #adf6dbff 100%)' }}>
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -20,27 +19,27 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
           </div>
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => onNavigate('student')}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className="px-4 py-2 transition-colors hover:text-primary"
               style={{ color: '#6b7280' }}
             >
-              Student
+              Home
             </button>
             <button 
-              onClick={() => onNavigate('organizer')}
-              className="px-4 py-2 transition-colors hover:text-secondary"
+              onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-4 py-2 transition-colors hover:text-primary"
               style={{ color: '#6b7280' }}
             >
-              Organizer
+              Features
             </button>
             <button 
-              onClick={() => onNavigate('admin')}
+              onClick={() => onNavigate('auth')}
               className="px-5 py-2.5 rounded-2xl transition-colors font-medium"
               style={{ backgroundColor: '#3e50f4', color: '#ffffff' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2e3fb4'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3e50f4'}
             >
-              Admin Access
+              Get Started
             </button>
           </div>
         </div>
@@ -56,47 +55,38 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
       <section className="pt-32 pb-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
+            <div className="animate-fadeInLeft">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium" 
                    style={{ backgroundColor: '#27b07d20', borderColor: '#27b07d40', color: '#27b07d' }}>
                 <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#27b07d' }} />
                 <span>Trusted by 50+ Universities</span>
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight animate-fadeInUp animate-delay-100">
                 Your Campus,{" "}
                 <span style={{ color: '#3e50f4' }}>Unified</span>
                 {" "}
                 and{" "}
                 <span style={{ color: '#27b07d' }}>Simplified</span>
               </h1>
-              <p className="text-lg lg:text-xl max-w-xl mx-auto lg:mx-0" style={{ color: '#6b7280' }}>
+              <p className="text-lg lg:text-xl max-w-xl mx-auto lg:mx-0 animate-fadeInUp animate-delay-200" style={{ color: '#6b7280' }}>
                 Transform Your Campus Events
               </p>
-              <p className="text-xl text-slate-600 mb-8 leading-relaxed">
+              <p className="text-xl text-slate-600 mb-8 leading-relaxed animate-fadeInUp animate-delay-300">
                 CampusFlow streamlines event creation, resource booking, and approvals—empowering students, organizers, and administrators with a modern, intuitive platform.
               </p>
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-wrap gap-4 animate-fadeInUp animate-delay-400">
                 <button 
-                  onClick={() => onNavigate('student')}
+                  onClick={() => onNavigate('auth')}
                   className="px-8 py-4 rounded-2xl transition-colors flex items-center gap-2 font-semibold"
                   style={{ backgroundColor: '#3e50f4', color: '#ffffff' }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2e3fb4'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3e50f4'}
                 >
-                  Join as Student
+                  Get Started
                   <ArrowRight className="w-5 h-5" />
                 </button>
-                <button 
-                  onClick={() => onNavigate('organizer')}
-                  className="px-8 py-4 rounded-2xl transition-colors font-medium"
-                  style={{ backgroundColor: '#27b07d', color: '#ffffff' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1f8f66'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#27b07d'}
-                >
-                  Organizer Login
-                </button>
               </div>
-              <div className="flex items-center gap-8 mt-10 pt-10 border-t border-slate-200">
+              <div className="flex items-center gap-8 mt-10 pt-10 border-t border-slate-200 animate-fadeInUp animate-delay-500">
                 <div>
                   <div className="text-3xl text-slate-900">500+</div>
                   <div className="text-sm text-slate-600">Active Events</div>
@@ -111,10 +101,10 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                 </div>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative animate-fadeInRight animate-delay-200">
               <div className="rounded-3xl overflow-hidden shadow-2xl shadow-indigo-600/10">
                 <ImageWithFallback 
-                  src={heroImage}
+                  src="/image.png"
                   alt="Students collaborating on campus"
                   className="w-full h-auto object-cover"
                 />
@@ -127,6 +117,37 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                   <div>
                     <div className="text-sm text-slate-600">Event Approved</div>
                     <div className="text-slate-900">Tech Symposium 2026</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tech Fest 2025 Floating Card */}
+              <div className="absolute -bottom-6 -right-6 bg-white rounded-2xl p-4 shadow-lg animate-float hidden lg:block">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Tech Fest 2025</p>
+                    <p className="text-xs text-slate-600">Starting in 2 days</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* New Registrations Floating Card */}
+              <div className="absolute -top-4 -right-4 bg-white rounded-2xl p-4 shadow-lg animate-float hidden lg:block" style={{ animationDelay: '1s' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-users w-5 h-5 text-white">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="9" cy="7" r="4"></circle>
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">+1,234</p>
+                    <p className="text-xs text-slate-600">New registrations</p>
                   </div>
                 </div>
               </div>
@@ -176,9 +197,10 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                 {/* Feature image */}
                 <div className="relative rounded-xl overflow-hidden bg-gray-100">
                   <img
-                    src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2xsYWJvcmF0aW9uJTIwdGVhbSUyMHdvcmslMjBzcGFjZXxlbnwwfHx8fDE3NjkzMDYwMTM&ixlib=rb-4.1.0&q=80&w=1080"
+                    src="/event.png"
                     alt="Event Management"
                     className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
                   />
                 </div>
               </div>
@@ -204,9 +226,10 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                 {/* Feature image */}
                 <div className="relative rounded-xl overflow-hidden bg-gray-100">
                   <img
-                    src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhbmFseXRpY3MlMjBkYXNoYm9hcmR8ZW58MHx8fHwxNzY5MzA2MDEz&ixlib=rb-4.1.0&q=80&w=1080"
+                    src="/resource.png"
                     alt="Resource Booking"
                     className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
                   />
                 </div>
               </div>
@@ -232,9 +255,10 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                 {/* Feature image */}
                 <div className="relative rounded-xl overflow-hidden bg-gray-100">
                   <img
-                    src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhbmFseXRpY3MlMjBkYXNoYm9hcmR8ZW58MHx8fHwxNzY5MzA2MDEz&ixlib=rb-4.1.0&q=80&w=1080"
+                    src="/smart.png"
                     alt="Smart Analytics"
                     className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
                   />
                 </div>
               </div>
@@ -260,9 +284,10 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                 {/* Feature image */}
                 <div className="relative rounded-xl overflow-hidden bg-gray-100">
                   <img
-                    src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2xsYWJvcmF0aW9uJTIwdGVhbSUyMHdvcmslMjBzcGFjZXxlbnwwfHx8fDE3NjkzMDYwMTM&ixlib=rb-4.1.0&q=80&w=1080"
+                    src="/collab.png"
                     alt="Collaboration Hub"
                     className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
                   />
                 </div>
               </div>
@@ -364,10 +389,16 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
           <div className="flex flex-wrap gap-4 justify-center">
             <button 
               onClick={() => onNavigate('student')}
-              className="px-8 py-4 rounded-2xl transition-colors font-semibold"
+              className="px-8 py-4 rounded-2xl transition-all duration-300 font-semibold transform hover:scale-105 hover:shadow-xl"
               style={{ backgroundColor: '#3e50f4', color: '#ffffff' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2e3fb4'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3e50f4'}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#2e3fb4';
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#3e50f4';
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              }}
             >
               Get Started
             </button>

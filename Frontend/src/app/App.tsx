@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import LandingPage from '@/app/components/LandingPage';
-import AuthScreen from '@/app/components/AuthScreen';
-import StudentDashboard from '@/app/components/StudentDashboard';
-import OrganizerDashboard from '@/app/components/OrganizerDashboard';
-import AdminDashboard from '@/app/components/AdminDashboard';
+import LandingPage from './components/LandingPage';
+import AuthScreen from './components/AuthScreen';
+import StudentDashboard from './components/StudentDashboard';
+import OrganizerDashboard from './components/OrganizerDashboard';
+import AdminDashboard from './components/AdminDashboard';
 
 type Screen = 'landing' | 'auth' | 'dashboard';
 type Role = 'student' | 'organizer' | 'admin' | null;
@@ -12,8 +12,8 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [selectedRole, setSelectedRole] = useState<Role>(null);
 
-  const handleNavigateToAuth = (role: 'student' | 'organizer' | 'admin') => {
-    setSelectedRole(role);
+  const handleNavigateToAuth = () => {
+    setSelectedRole(null);
     setCurrentScreen('auth');
   };
 
@@ -31,30 +31,34 @@ export default function App() {
     setCurrentScreen('landing');
   };
 
+  const handleBackToHome = () => {
+    setSelectedRole(null);
+    setCurrentScreen('landing');
+  };
+
   return (
     <div className="size-full">
       {currentScreen === 'landing' && (
         <LandingPage onNavigate={handleNavigateToAuth} />
       )}
 
-      {currentScreen === 'auth' && selectedRole && (
+      {currentScreen === 'auth' && (
         <AuthScreen 
-          role={selectedRole} 
           onBack={handleBackToLanding}
           onLogin={handleLogin}
         />
       )}
 
       {currentScreen === 'dashboard' && selectedRole === 'student' && (
-        <StudentDashboard onLogout={handleLogout} />
+        <StudentDashboard onLogout={handleLogout} onHome={handleBackToHome} />
       )}
 
       {currentScreen === 'dashboard' && selectedRole === 'organizer' && (
-        <OrganizerDashboard onLogout={handleLogout} />
+        <OrganizerDashboard onLogout={handleLogout} onHome={handleBackToHome} />
       )}
 
       {currentScreen === 'dashboard' && selectedRole === 'admin' && (
-        <AdminDashboard onLogout={handleLogout} />
+        <AdminDashboard onLogout={handleLogout} onHome={handleBackToHome} />
       )}
     </div>
   );

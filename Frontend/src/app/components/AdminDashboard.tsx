@@ -7,6 +7,7 @@ import {
 
 interface AdminDashboardProps {
   onLogout: () => void;
+  onHome?: () => void;
 }
 
 interface PendingEvent {
@@ -25,7 +26,7 @@ interface PendingEvent {
   submittedDate: string;
 }
 
-export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
+export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps) {
   const [selectedEvent, setSelectedEvent] = useState<PendingEvent | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
 
@@ -100,14 +101,6 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search events..."
-                  className="pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 w-64 focus:outline-none focus:ring-2 focus:ring-violet-200"
-                />
-              </div>
               <button className="relative p-2 hover:bg-slate-100 rounded-xl transition-colors">
                 <Bell className="w-5 h-5 text-slate-600" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-violet-600 rounded-full"></span>
@@ -116,6 +109,14 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 <Settings className="w-5 h-5 text-slate-600" />
               </button>
               <div className="h-6 w-px bg-slate-200"></div>
+              {onHome && (
+                <button 
+                  onClick={onHome}
+                  className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
+                >
+                  <span className="text-sm">Home</span>
+                </button>
+              )}
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
                   <User className="w-5 h-5 text-violet-600" />

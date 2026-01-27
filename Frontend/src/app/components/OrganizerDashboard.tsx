@@ -4,10 +4,11 @@ import {
   LogOut, Upload, FileText, ChevronRight, Check, Clock, 
   AlertCircle, CheckCircle2, XCircle, MapPin, User
 } from 'lucide-react';
-import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
+import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface OrganizerDashboardProps {
   onLogout: () => void;
+  onHome?: () => void;
 }
 
 type EventStatus = 'draft' | 'pending' | 'approved' | 'live' | 'changes-requested';
@@ -21,7 +22,7 @@ interface Event {
   registered: number;
 }
 
-export default function OrganizerDashboard({ onLogout }: OrganizerDashboardProps) {
+export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashboardProps) {
   const [showWizard, setShowWizard] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [eventData, setEventData] = useState({
@@ -75,9 +76,9 @@ export default function OrganizerDashboard({ onLogout }: OrganizerDashboardProps
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-slate-50">
       {/* Top Navigation */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40 animate-fadeInDown">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -91,29 +92,29 @@ export default function OrganizerDashboard({ onLogout }: OrganizerDashboardProps
               <span className="text-slate-600">Organizer Portal</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search events..."
-                  className="pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 w-64 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                />
-              </div>
-              <button className="relative p-2 hover:bg-slate-100 rounded-xl transition-colors">
+              <button className="relative p-2 hover:bg-slate-100 rounded-xl transition-colors animate-fadeIn animate-delay-100">
                 <Bell className="w-5 h-5 text-slate-600" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-600 rounded-full"></span>
               </button>
-              <button className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+              <button className="p-2 hover:bg-slate-100 rounded-xl transition-colors animate-fadeIn animate-delay-200">
                 <Settings className="w-5 h-5 text-slate-600" />
               </button>
               <div className="h-6 w-px bg-slate-200"></div>
+              {onHome && (
+                <button 
+                  onClick={onHome}
+                  className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors animate-fadeIn animate-delay-300"
+                >
+                  <span className="text-sm">Home</span>
+                </button>
+              )}
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center animate-fadeIn animate-delay-400">
                   <User className="w-5 h-5 text-emerald-600" />
                 </div>
                 <button 
                   onClick={onLogout}
-                  className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
+                  className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors animate-fadeIn animate-delay-500"
                 >
                   <span className="text-sm">Logout</span>
                   <LogOut className="w-4 h-4" />
@@ -124,9 +125,9 @@ export default function OrganizerDashboard({ onLogout }: OrganizerDashboardProps
         </div>
       </nav>
 
-      <div className="p-6">
+      <div className="p-6 animate-fadeInDown">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 animate-fadeInDown">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl text-slate-900 mb-2">Events Dashboard</h1>
@@ -142,44 +143,88 @@ export default function OrganizerDashboard({ onLogout }: OrganizerDashboardProps
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-6 border border-slate-200">
-              <div className="text-2xl text-slate-900 mb-1">12</div>
-              <div className="text-sm text-slate-600">Total Events</div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 animate-fadeInUp animate-delay-100">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className="text-sm text-slate-500">Total</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mb-1">12</div>
+              <div className="text-sm text-slate-600">Events</div>
             </div>
-            <div className="bg-white rounded-2xl p-6 border border-slate-200">
-              <div className="text-2xl text-emerald-600 mb-1">8</div>
-              <div className="text-sm text-slate-600">Approved</div>
+            
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 animate-fadeInUp animate-delay-200">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                </div>
+                <span className="text-sm text-slate-500">Active</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mb-1">8</div>
+              <div className="text-sm text-slate-600">Published</div>
             </div>
-            <div className="bg-white rounded-2xl p-6 border border-slate-200">
-              <div className="text-2xl text-amber-600 mb-1">2</div>
-              <div className="text-sm text-slate-600">Pending Review</div>
+            
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 animate-fadeInUp animate-delay-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-amber-600" />
+                </div>
+                <span className="text-sm text-slate-500">Pending</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mb-1">3</div>
+              <div className="text-sm text-slate-600">Review</div>
             </div>
-            <div className="bg-white rounded-2xl p-6 border border-slate-200">
-              <div className="text-2xl text-slate-900 mb-1">2.4K</div>
-              <div className="text-sm text-slate-600">Total Registrations</div>
+            
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 animate-fadeInUp animate-delay-400">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-violet-600" />
+                </div>
+                <span className="text-sm text-slate-500">Total</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mb-1">1,247</div>
+              <div className="text-sm text-slate-600">Registrations</div>
             </div>
           </div>
-        </div>
 
-        {/* Events List */}
-        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-xl text-slate-900">Your Events</h2>
-          </div>
-          <div className="divide-y divide-slate-200">
-            {events.map((event) => {
-              const status = statusConfig[event.status];
-              const StatusIcon = status.icon;
-              return (
-                <div key={event.id} className="p-6 hover:bg-slate-50 transition-colors">
+          {/* Events List */}
+          <div className="animate-fadeInUp animate-delay-500">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl text-slate-900 font-semibold">Your Events</h2>
+              <div className="flex items-center gap-2">
+                <button className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 transition-colors">
+                  All Events
+                </button>
+                <button className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 transition-colors">
+                  Draft
+                </button>
+                <button className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 transition-colors">
+                  Published
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4">
+              {events.map((event, index) => (
+                <div 
+                  key={event.id}
+                  className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 animate-fadeInUp"
+                  style={{ animationDelay: `${(index + 6) * 100}ms` }}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg text-slate-900">{event.title}</h3>
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm ${status.bg} ${status.color}`}>
-                          <StatusIcon className="w-4 h-4" />
-                          {status.label}
+                        <h3 className="text-lg font-semibold text-slate-900">{event.title}</h3>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          event.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                          event.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                          event.status === 'draft' ? 'bg-slate-100 text-slate-700' :
+                          event.status === 'live' ? 'bg-blue-100 text-blue-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
                         </span>
                       </div>
                       <div className="flex items-center gap-6 text-sm text-slate-600">
@@ -193,12 +238,12 @@ export default function OrganizerDashboard({ onLogout }: OrganizerDashboardProps
                         </div>
                       </div>
                     </div>
-                    <button className="p-2 hover:bg-white rounded-xl transition-colors">
+                    <button className="p-2 hover:bg-slate-50 rounded-xl transition-colors">
                       <ChevronRight className="w-5 h-5 text-slate-400" />
                     </button>
                   </div>
                   {event.registered > 0 && (
-                    <div className="mt-3">
+                    <div className="mt-4">
                       <div className="w-full bg-slate-100 rounded-full h-2">
                         <div 
                           className="bg-emerald-600 h-2 rounded-full transition-all"
@@ -208,8 +253,8 @@ export default function OrganizerDashboard({ onLogout }: OrganizerDashboardProps
                     </div>
                   )}
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </div>
       </div>

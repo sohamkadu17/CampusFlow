@@ -5,11 +5,11 @@ import {
   Clock, User, Filter, Grid, List, Heart,
   QrCode, CheckCircle2, Download, ChevronRight
 } from 'lucide-react';
-import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
-import { motion, AnimatePresence } from 'motion/react';
+import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface StudentDashboardProps {
   onLogout: () => void;
+  onHome?: () => void;
 }
 
 interface Event {
@@ -34,7 +34,7 @@ interface RegisteredEvent extends Event {
   qrCode: string;
 }
 
-export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
+export default function StudentDashboard({ onLogout, onHome }: StudentDashboardProps) {
   const [activeTab, setActiveTab] = useState<'discover' | 'registered' | 'clubs'>('discover');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -168,14 +168,6 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
               <span className="text-slate-600">Student Portal</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search events..."
-                  className="pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 w-64 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                />
-              </div>
               <button className="relative p-2 hover:bg-slate-100 rounded-xl transition-colors">
                 <Bell className="w-5 h-5 text-slate-600" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-indigo-600 rounded-full"></span>
@@ -184,6 +176,14 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
                 <Settings className="w-5 h-5 text-slate-600" />
               </button>
               <div className="h-6 w-px bg-slate-200"></div>
+              {onHome && (
+                <button 
+                  onClick={onHome}
+                  className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
+                >
+                  <span className="text-sm">Home</span>
+                </button>
+              )}
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
                   <User className="w-5 h-5 text-indigo-600" />
@@ -291,10 +291,11 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
                   return (
                     <div key={event.id} className="bg-white rounded-3xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all group">
                       <div className="relative">
-                        <ImageWithFallback 
+                        <img
                           src={event.imageUrl}
                           alt={event.title}
                           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
                         />
                         <button className="absolute top-3 right-3 w-10 h-10 rounded-xl bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors">
                           <Heart className={`w-5 h-5 ${event.isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-600'}`} />
@@ -380,10 +381,11 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
                     <div key={event.id} className="p-6 hover:bg-slate-50 transition-colors">
                       <div className="flex gap-6">
                         <div className="w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0">
-                          <ImageWithFallback 
+                          <img
                             src={event.imageUrl}
                             alt={event.title}
                             className="w-full h-full object-cover"
+                            loading="lazy"
                           />
                         </div>
                         <div className="flex-1">
@@ -474,10 +476,11 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
               {registeredEvents.map((event) => (
                 <div key={event.id} className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
                   <div className="relative">
-                    <ImageWithFallback 
+                    <img
                       src={event.imageUrl}
                       alt={event.title}
                       className="w-full h-48 object-cover"
+                      loading="lazy"
                     />
                     <div className="absolute top-3 right-3 px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5" />
