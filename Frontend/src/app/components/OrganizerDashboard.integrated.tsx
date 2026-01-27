@@ -9,7 +9,6 @@ import { eventAPI, bookingAPI } from '../../services/api';
 
 interface OrganizerDashboardProps {
   onLogout: () => void;
-  onHome?: () => void;
 }
 
 type EventStatus = 'draft' | 'pending' | 'approved' | 'live' | 'changes-requested';
@@ -23,7 +22,7 @@ interface Event {
   registered: number;
 }
 
-export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashboardProps) {
+export default function OrganizerDashboard({ onLogout }: OrganizerDashboardProps) {
   const [showWizard, setShowWizard] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [events, setEvents] = useState<Event[]>([]);
@@ -137,9 +136,9 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#F8FAFC]">
       {/* Top Navigation */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40 animate-fadeInDown">
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -167,27 +166,12 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
               <button className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
                 <Settings className="w-5 h-5 text-slate-600" />
               </button>
-              <div className="h-6 w-px bg-slate-200"></div>
-              {onHome && (
-                <button 
-                  onClick={onHome}
-                  className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
-                >
-                  <span className="text-sm font-medium">Home</span>
-                </button>
-              )}
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center animate-fadeIn animate-delay-400">
-                  <User className="w-5 h-5 text-emerald-600" />
-                </div>
-                <button 
-                  onClick={onLogout}
-                  className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                >
-                  <span className="text-sm font-medium">Logout</span>
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
+              <button 
+                onClick={onLogout}
+                className="w-10 h-10 rounded-xl bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors"
+              >
+                <LogOut className="w-5 h-5 text-red-600" />
+              </button>
             </div>
           </div>
         </div>
@@ -213,79 +197,6 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
         {error && (
           <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
             {error}
-          </div>
-        )}
-
-        {/* Stats Dashboard */}
-        {!loading && events.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="text-sm text-slate-500">Total</span>
-              </div>
-              <div className="text-2xl font-bold text-slate-900 mb-1">{events.length}</div>
-              <div className="text-sm text-slate-600">Events</div>
-            </div>
-            
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                </div>
-                <span className="text-sm text-slate-500">Active</span>
-              </div>
-              <div className="text-2xl font-bold text-slate-900 mb-1">
-                {events.filter(e => e.status === 'approved' || e.status === 'live').length}
-              </div>
-              <div className="text-sm text-slate-600">Published</div>
-            </div>
-            
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-amber-600" />
-                </div>
-                <span className="text-sm text-slate-500">Pending</span>
-              </div>
-              <div className="text-2xl font-bold text-slate-900 mb-1">
-                {events.filter(e => e.status === 'pending').length}
-              </div>
-              <div className="text-sm text-slate-600">Review</div>
-            </div>
-            
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center">
-                  <Users className="w-6 h-6 text-violet-600" />
-                </div>
-                <span className="text-sm text-slate-500">Total</span>
-              </div>
-              <div className="text-2xl font-bold text-slate-900 mb-1">
-                {events.reduce((sum, e) => sum + e.registered, 0).toLocaleString()}
-              </div>
-              <div className="text-sm text-slate-600">Registrations</div>
-            </div>
-          </div>
-        )}
-
-        {/* Filter Tabs */}
-        {!loading && events.length > 0 && (
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl text-slate-900 font-semibold">Your Events</h2>
-            <div className="flex items-center gap-2">
-              <button className="px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-xl transition-colors">
-                All Events
-              </button>
-              <button className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors">
-                Draft
-              </button>
-              <button className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors">
-                Published
-              </button>
-            </div>
           </div>
         )}
 
@@ -323,7 +234,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                     </div>
                   </div>
 
-                  <div className="flex gap-2 mb-4">
+                  <div className="flex gap-2">
                     <button className="flex-1 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors text-sm">
                       View Details
                     </button>
@@ -333,25 +244,9 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                       </button>
                     )}
                   </div>
-
-                  {/* Registration Progress Bar */}
-                  {event.registered > 0 && (
-                    <div className="mt-4">
-                      <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
-                        <span>{Math.round((event.registered / event.capacity) * 100)}% filled</span>
-                        <span>{event.capacity - event.registered} spots left</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2">
-                        <div 
-                          className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min((event.registered / event.capacity) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
 
