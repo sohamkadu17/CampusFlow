@@ -9,6 +9,7 @@ import { eventAPI, bookingAPI } from '../../services/api';
 
 interface OrganizerDashboardProps {
   onLogout: () => void;
+  onHome?: () => void;
 }
 
 type EventStatus = 'draft' | 'pending' | 'approved' | 'live' | 'changes-requested';
@@ -22,7 +23,7 @@ interface Event {
   registered: number;
 }
 
-export default function OrganizerDashboard({ onLogout }: OrganizerDashboardProps) {
+export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashboardProps) {
   const [showWizard, setShowWizard] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [events, setEvents] = useState<Event[]>([]);
@@ -166,12 +167,27 @@ export default function OrganizerDashboard({ onLogout }: OrganizerDashboardProps
               <button className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
                 <Settings className="w-5 h-5 text-slate-600" />
               </button>
-              <button 
-                onClick={onLogout}
-                className="w-10 h-10 rounded-xl bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors"
-              >
-                <LogOut className="w-5 h-5 text-red-600" />
-              </button>
+              <div className="h-6 w-px bg-slate-200"></div>
+              {onHome && (
+                <button 
+                  onClick={onHome}
+                  className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  <span className="text-sm font-medium">Home</span>
+                </button>
+              )}
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <User className="w-5 h-5 text-emerald-600" />
+                </div>
+                <button 
+                  onClick={onLogout}
+                  className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                >
+                  <span className="text-sm font-medium">Logout</span>
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
