@@ -216,6 +216,79 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
           </div>
         )}
 
+        {/* Stats Dashboard */}
+        {!loading && events.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className="text-sm text-slate-500">Total</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mb-1">{events.length}</div>
+              <div className="text-sm text-slate-600">Events</div>
+            </div>
+            
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                </div>
+                <span className="text-sm text-slate-500">Active</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mb-1">
+                {events.filter(e => e.status === 'approved' || e.status === 'live').length}
+              </div>
+              <div className="text-sm text-slate-600">Published</div>
+            </div>
+            
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-amber-600" />
+                </div>
+                <span className="text-sm text-slate-500">Pending</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mb-1">
+                {events.filter(e => e.status === 'pending').length}
+              </div>
+              <div className="text-sm text-slate-600">Review</div>
+            </div>
+            
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-violet-600" />
+                </div>
+                <span className="text-sm text-slate-500">Total</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mb-1">
+                {events.reduce((sum, e) => sum + e.registered, 0).toLocaleString()}
+              </div>
+              <div className="text-sm text-slate-600">Registrations</div>
+            </div>
+          </div>
+        )}
+
+        {/* Filter Tabs */}
+        {!loading && events.length > 0 && (
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl text-slate-900 font-semibold">Your Events</h2>
+            <div className="flex items-center gap-2">
+              <button className="px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-xl transition-colors">
+                All Events
+              </button>
+              <button className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors">
+                Draft
+              </button>
+              <button className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors">
+                Published
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Events Grid */}
         {loading ? (
           <div className="text-center py-12">
@@ -250,7 +323,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mb-4">
                     <button className="flex-1 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors text-sm">
                       View Details
                     </button>
@@ -260,6 +333,22 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                       </button>
                     )}
                   </div>
+
+                  {/* Registration Progress Bar */}
+                  {event.registered > 0 && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
+                        <span>{Math.round((event.registered / event.capacity) * 100)}% filled</span>
+                        <span>{event.capacity - event.registered} spots left</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-2">
+                        <div 
+                          className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min((event.registered / event.capacity) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
