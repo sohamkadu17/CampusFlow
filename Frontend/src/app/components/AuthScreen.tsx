@@ -16,7 +16,7 @@ export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -61,31 +61,52 @@ export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!selectedRole) {
+      setError('Please select a role first.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
 
     try {
-      if (isLogin) {
-        // Login flow
-        const { error: signInError } = await auth.signIn(email, password);
-        if (signInError) throw signInError;
-
-        // Sync with backend
-        const { data } = await authAPI.login({ email, password, role });
-        localStorage.setItem('accessToken', data.data.accessToken);
-        localStorage.setItem('user', JSON.stringify(data.data.user));
-        
-        onLogin(role);
+      if (!isSignUp) {
+        // Login flow - Try backend first, then Supabase
+        try {
+          const { data } = await authAPI.login({ email, password, role: selectedRole });
+          
+          // Store backend tokens
+          localStorage.setItem('token', data.data.token);
+          localStorage.setItem('refreshToken', data.data.refreshToken);
+          localStorage.setItem('user', JSON.stringify(data.data.user));
+          
+          // Also sign in to Supabase (optional, for file storage/realtime features)
+          try {
+            await auth.signIn(email, password);
+          } catch (supabaseError) {
+            console.warn('Supabase sign-in failed:', supabaseError);
+            // Continue anyway since backend login succeeded
+          }
+          
+          onLogin(selectedRole);
+        } catch (backendError: any) {
+          // If backend fails, show more helpful error
+          if (backendError.code === 'ERR_NETWORK' || backendError.message?.includes('Network Error')) {
+            throw new Error('Cannot connect to server. Please ensure the backend is running.');
+          }
+          throw new Error(backendError.response?.data?.message || 'Invalid email or password');
+        }
       } else {
         // Registration flow
-        const { error: signUpError } = await auth.signUp(email, password, { name, role });
+        const { error: signUpError } = await auth.signUp(email, password, { name, role: selectedRole });
         if (signUpError) throw signUpError;
 
         // Sync with backend
-        await authAPI.register({ email, password, name, role });
+        await authAPI.register({ email, password, name, role: selectedRole });
         
         alert('Registration successful! Please check your email to verify your account.');
-        setIsLogin(true);
+        setIsSignUp(false);
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please try again.');
@@ -264,13 +285,20 @@ export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
               </button>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
-              className={`w-full py-4 rounded-2xl bg-gradient-to-r ${config.gradient} text-white hover:shadow-lg transition-all shadow-${config.color}-600/25`}
-              disabled={isSignUp && !isEmailVerified}
+              className={`w-full py-4 rounded-2xl bg-gradient-to-r ${config.gradient} text-white hover:shadow-lg transition-all shadow-${config.color}-600/25 disabled:opacity-50 disabled:cursor-not-allowed`}
+              disabled={loading || (isSignUp && !isEmailVerified)}
             >
-              {isSignUp ? 'Sign Up' : 'Sign In'}
+              {loading ? 'Please wait...' : (isSignUp ? 'Sign Up' : 'Sign In')}
             </button>
 
             {/* Toggle Sign In/Up */}

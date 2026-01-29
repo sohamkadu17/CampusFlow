@@ -11,12 +11,19 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add Supabase token
+// Request interceptor to add token from localStorage
 api.interceptors.request.use(
   async (config) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`;
+    // Try to get token from localStorage first (backend JWT)
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Fallback to Supabase token if backend token not available
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        config.headers.Authorization = `Bearer ${session.access_token}`;
+      }
     }
     return config;
   },
@@ -30,11 +37,24 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      // Token expired, refresh or redirect to login
-      const { data: { session } } = await supabase.auth.refreshSession();
-      if (!session) {
-        // Redirect to login
-        window.location.href = '/auth';
+      // Token expired, try to refresh
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken) {
+        try {
+          // Call refresh token endpoint (you'll need to implement this)
+          const { data } = await api.post('/auth/refresh-token', { refreshToken });
+          localStorage.setItem('token', data.data.token);
+          // Retry the original request
+          return api.request(error.config);
+        } catch (refreshError) {
+          // Refresh failed, clear storage and redirect
+          localStorage.clear();
+          window.location.href = '/';
+        }
+      } else {
+        // No refresh token, redirect to login
+        localStorage.clear();
+        window.location.href = '/';
       }
     }
     return Promise.reject(error);
