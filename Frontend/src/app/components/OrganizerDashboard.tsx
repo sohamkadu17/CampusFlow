@@ -186,10 +186,13 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
       const notificationsList = notifResponse.data.data || notifResponse.data.notifications || [];
       const unreadCountValue = countResponse.data.data?.count || countResponse.data.count || 0;
       
-      setNotifications(notificationsList);
+      // Ensure notifications is always an array
+      setNotifications(Array.isArray(notificationsList) ? notificationsList : []);
       setUnreadCount(unreadCountValue);
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setFetchingNotifications(false);
     }
