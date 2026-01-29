@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { ArrowLeft, Sparkles, User, Users, Shield, Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Sparkles, User, Users, Shield, Mail, Lock, Eye, EyeOff, CheckCircle  } from 'lucide-react';
+import { auth } from '../../lib/supabase';
+import { authAPI } from '../../services/api';
 
 interface AuthScreenProps {
   onBack: () => void;
@@ -14,7 +16,9 @@ export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const roleConfig = {
     student: {
@@ -55,10 +59,38 @@ export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
     }, 2000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedRole) {
-      onLogin(selectedRole);
+    setLoading(true);
+    setError('');
+
+    try {
+      if (isLogin) {
+        // Login flow
+        const { error: signInError } = await auth.signIn(email, password);
+        if (signInError) throw signInError;
+
+        // Sync with backend
+        const { data } = await authAPI.login({ email, password, role });
+        localStorage.setItem('accessToken', data.data.accessToken);
+        localStorage.setItem('user', JSON.stringify(data.data.user));
+        
+        onLogin(role);
+      } else {
+        // Registration flow
+        const { error: signUpError } = await auth.signUp(email, password, { name, role });
+        if (signUpError) throw signUpError;
+
+        // Sync with backend
+        await authAPI.register({ email, password, name, role });
+        
+        alert('Registration successful! Please check your email to verify your account.');
+        setIsLogin(true);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -12,8 +12,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+<<<<<<< HEAD
 
 # Build outputs
+=======
+HackOverflow.pdf 
+frontend/node_modules
+>>>>>>> c270a59982465abbb9cb5d1610ab7f0ed10df2b5
 dist
 dist-ssr
 build
