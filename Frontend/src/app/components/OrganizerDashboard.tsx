@@ -22,6 +22,13 @@ interface Event {
   status: EventStatus;
   capacity: number;
   registered: number;
+  venue?: string;
+  imageUrl?: string;
+  description?: string;
+  category?: string;
+  startDate?: string;
+  endDate?: string;
+  time?: string;
 }
 
 export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashboardProps) {
@@ -30,7 +37,10 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [showRegistrations, setShowRegistrations] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'draft' | 'published'>('all');
+  const [registrations, setRegistrations] = useState<any[]>([]);
   const [eventData, setEventData] = useState({
     title: '',
     description: '',
@@ -118,6 +128,13 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
         status: event.status,
         capacity: event.capacity,
         registered: event.registeredCount || 0,
+        venue: event.venue,
+        imageUrl: event.imageUrl,
+        description: event.description,
+        category: event.category,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        time: event.time,
       })));
       
       // Calculate stats
@@ -154,6 +171,31 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
       console.error('Failed to fetch notifications:', err);
     } finally {
       setFetchingNotifications(false);
+    }
+  };
+
+  const fetchRegistrations = async (eventId: string) => {
+    try {
+      const response = await api.get(`/registrations/event/${eventId}`);
+      setRegistrations(response.data.data || []);
+    } catch (err) {
+      console.error('Failed to fetch registrations:', err);
+      setRegistrations([]);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await eventAPI.delete(eventId);
+      alert('Event deleted successfully!');
+      setSelectedEvent(null);
+      fetchEvents(); // Refresh the list
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete event');
     }
   };
 
@@ -571,37 +613,53 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                   className="bg-white rounded-2xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 animate-fadeInUp"
                   style={{ animationDelay: `${(index + 6) * 100}ms` }}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-slate-900">{event.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          event.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                          event.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                          event.status === 'draft' ? 'bg-slate-100 text-slate-700' :
-                          event.status === 'live' ? 'bg-blue-100 text-blue-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                        </span>
+                  <div className="flex items-center gap-4">
+                    {/* Event Poster Image */}
+                    {event.imageUrl && (
+                      <div className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-slate-100">
+                        <img 
+                          src={event.imageUrl} 
+                          alt={event.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
                       </div>
-                      <div className="flex items-center gap-6 text-sm text-slate-600">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4" />
-                          {event.date}
+                    )}
+                    
+                    <div className="flex items-center justify-between flex-1">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-slate-900">{event.title}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            event.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                            event.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                            event.status === 'draft' ? 'bg-slate-100 text-slate-700' :
+                            event.status === 'live' ? 'bg-blue-100 text-blue-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <Users className="w-4 h-4" />
-                          {event.registered} / {event.capacity} registered
+                        <div className="flex items-center gap-6 text-sm text-slate-600">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="w-4 h-4" />
+                            {event.date}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Users className="w-4 h-4" />
+                            {event.registered} / {event.capacity} registered
+                          </div>
                         </div>
                       </div>
+                      <button 
+                        onClick={() => setSelectedEvent(event)}
+                        className="p-2 hover:bg-slate-50 rounded-xl transition-colors"
+                      >
+                        <ChevronRight className="w-5 h-5 text-slate-400" />
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => setSelectedEvent(event)}
-                      className="p-2 hover:bg-slate-50 rounded-xl transition-colors"
-                    >
-                      <ChevronRight className="w-5 h-5 text-slate-400" />
-                    </button>
                   </div>
                   {event.registered > 0 && (
                     <div className="mt-4">
@@ -1099,7 +1157,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                       <MapPin className="w-4 h-4" />
                       <span className="text-sm">Venue</span>
                     </div>
-                    <p className="text-slate-900 font-medium">Not available</p>
+                    <p className="text-slate-900 font-medium">{selectedEvent.venue || 'Not specified'}</p>
                   </div>
 
                   <div className="p-4 bg-slate-50 rounded-xl">
@@ -1136,15 +1194,173 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                 </div>
 
                 {/* Quick Actions */}
-                <div className="flex gap-3">
-                  <button className="flex-1 px-4 py-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors font-medium">
+                <div className="grid grid-cols-3 gap-3">
+                  <button 
+                    onClick={() => {
+                      fetchRegistrations(selectedEvent.id);
+                      setShowRegistrations(true);
+                    }}
+                    className="px-4 py-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <Users className="w-4 h-4" />
                     View Registrations
                   </button>
-                  <button className="flex-1 px-4 py-3 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors font-medium">
+                  <button 
+                    onClick={() => setShowEditModal(true)}
+                    className="px-4 py-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
                     Edit Event
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteEvent(selectedEvent.id)}
+                    disabled={selectedEvent.registered > 0}
+                    className="px-4 py-3 rounded-xl bg-red-50 text-red-700 hover:bg-red-100 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={selectedEvent.registered > 0 ? 'Cannot delete event with registrations' : 'Delete event'}
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Delete
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Registrations Modal */}
+      {showRegistrations && selectedEvent && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-2xl text-slate-900 font-semibold">
+                Registrations - {selectedEvent.title}
+              </h2>
+              <button 
+                onClick={() => setShowRegistrations(false)}
+                className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                <XCircle className="w-6 h-6 text-slate-600" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {registrations.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <h3 className="text-lg text-slate-900 mb-2">No registrations yet</h3>
+                  <p className="text-slate-600">Students haven't registered for this event yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {registrations.map((reg: any, index: number) => (
+                    <div 
+                      key={reg._id || index}
+                      className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                            <User className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">
+                              {reg.userId?.name || reg.studentName || 'Student'}
+                            </p>
+                            <p className="text-xs text-slate-600">
+                              {reg.userId?.email || reg.email || 'No email'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-slate-500">Registered</p>
+                          <p className="text-sm text-slate-900">
+                            {new Date(reg.createdAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Event Modal */}
+      {showEditModal && selectedEvent && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-2xl text-slate-900 font-semibold">Edit Event</h2>
+              <button 
+                onClick={() => setShowEditModal(false)}
+                className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                <XCircle className="w-6 h-6 text-slate-600" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-slate-700 mb-2">Event Title</label>
+                  <input
+                    type="text"
+                    defaultValue={selectedEvent.title}
+                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-slate-700 mb-2">Venue</label>
+                    <input
+                      type="text"
+                      defaultValue={selectedEvent.venue}
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-slate-700 mb-2">Capacity</label>
+                    <input
+                      type="number"
+                      defaultValue={selectedEvent.capacity}
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-sm text-amber-800">
+                    ⚠️ <strong>Coming Soon:</strong> Full edit functionality is being implemented. For now, you can view the current values. Contact admin for urgent changes.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-200 flex gap-3">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  alert('Edit functionality coming soon!');
+                  setShowEditModal(false);
+                }}
+                className="flex-1 px-6 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+              >
+                Save Changes
+              </button>
             </div>
           </div>
         </div>
