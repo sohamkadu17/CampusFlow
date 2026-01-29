@@ -2,11 +2,13 @@
 import { 
   Sparkles, Plus, Calendar, Users, Settings, Bell, Search, 
   LogOut, Upload, FileText, ChevronRight, Check, Clock, 
-  AlertCircle, CheckCircle2, XCircle, MapPin, User, ExternalLink, Loader2, ArrowLeft, Home
+  AlertCircle, CheckCircle2, XCircle, MapPin, User, ExternalLink, Loader2, ArrowLeft, Home, MessageCircle, CalendarDays
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import api, { eventAPI, notificationAPI } from '../../services/api';
 import axios from 'axios';
+import ChatInterface from './ChatInterface';
+import ResourceBookingCalendar from './ResourceBookingCalendar';
 
 interface OrganizerDashboardProps {
   onLogout: () => void;
@@ -32,6 +34,7 @@ interface Event {
 }
 
 export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashboardProps) {
+  const [view, setView] = useState<'main' | 'chat' | 'calendar'>('main');
   const [showWizard, setShowWizard] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -39,6 +42,8 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showRegistrations, setShowRegistrations] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', venue: '', capacity: 0 });
+  const [updating, setUpdating] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'draft' | 'published'>('all');
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [eventData, setEventData] = useState({
@@ -92,6 +97,22 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Close notifications when view changes
+  useEffect(() => {
+    setShowNotifications(false);
+  }, [view]);
+
+  // Close notifications when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showNotifications && !(e.target as Element).closest('.notification-container')) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
 
   // Close notifications dropdown when clicking outside
   useEffect(() => {
@@ -196,6 +217,39 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
       fetchEvents(); // Refresh the list
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to delete event');
+    }
+  };
+
+  const handleEditClick = (event: Event) => {
+    setSelectedEvent(event);
+    setEditForm({
+      title: event.title,
+      venue: event.venue || '',
+      capacity: event.capacity,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateEvent = async () => {
+    if (!selectedEvent) return;
+
+    try {
+      setUpdating(true);
+      const token = localStorage.getItem('token');
+      await eventAPI.update(selectedEvent.id, {
+        title: editForm.title,
+        venue: editForm.venue,
+        capacity: editForm.capacity,
+      });
+
+      alert('Event updated successfully!');
+      setShowEditModal(false);
+      await fetchEvents();
+    } catch (err: any) {
+      console.error('Update error:', err);
+      alert(err.response?.data?.message || 'Failed to update event');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -351,10 +405,11 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
               <span className="text-slate-600">Organizer Portal</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative notification-dropdown-container">
+              <div className="relative notification-container">
                 <button 
                   className="relative p-2 hover:bg-slate-100 rounded-xl transition-colors animate-fadeIn animate-delay-100"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setShowNotifications(!showNotifications);
                     if (!showNotifications) {
                       fetchNotifications();
@@ -368,10 +423,24 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                     </span>
                   )}
                 </button>
+
+                <button 
+                  onClick={() => setView('chat')}
+                  className={`w-10 h-10 rounded-xl ${view === 'chat' ? 'bg-emerald-100' : 'bg-slate-100 hover:bg-slate-200'} flex items-center justify-center transition-colors relative`}
+                >
+                  <MessageCircle className={`w-5 h-5 ${view === 'chat' ? 'text-emerald-600' : 'text-slate-600'}`} />
+                </button>
+
+                <button 
+                  onClick={() => setView('calendar')}
+                  className={`w-10 h-10 rounded-xl ${view === 'calendar' ? 'bg-emerald-100' : 'bg-slate-100 hover:bg-slate-200'} flex items-center justify-center transition-colors relative`}
+                >
+                  <CalendarDays className={`w-5 h-5 ${view === 'calendar' ? 'text-emerald-600' : 'text-slate-600'}`} />
+                </button>
                 
                 {/* Notifications Dropdown */}
                 {showNotifications && (
-                  <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 max-h-[500px] overflow-hidden flex flex-col animate-fadeIn">
+                  <div className="fixed right-6 top-20 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 max-h-[500px] overflow-hidden flex flex-col animate-fadeIn" style={{ zIndex: 9999 }}>
                     <div className="p-4 border-b border-slate-200 flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-slate-900">Notifications</h3>
                       {unreadCount > 0 && (
@@ -399,7 +468,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                           <p className="text-xs text-slate-500 mt-1">You'll see updates here when admins review your events</p>
                         </div>
                       ) : (
-                        notifications.map((notif) => (
+                        (Array.isArray(notifications) ? notifications : []).map((notif) => (
                           <div 
                             key={notif._id || notif.id}
                             className={`p-4 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${
@@ -479,9 +548,22 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
         </div>
       )}
 
-      <div className="p-6 animate-fadeInDown">
-        {/* Header */}
-        <div className="mb-8 animate-fadeInDown">
+      {/* Show Chat Interface */}
+      {view === 'chat' && (
+        <ChatInterface onBack={() => setView('main')} />
+      )}
+
+      {/* Show Resource Booking Calendar */}
+      {view === 'calendar' && (
+        <ResourceBookingCalendar onBack={() => setView('main')} />
+      )}
+
+      {/* Main Dashboard Content */}
+      {view === 'main' && (
+        <>
+          <div className="p-6 animate-fadeInDown">
+            {/* Header */}
+            <div className="mb-8 animate-fadeInDown">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl text-slate-900 mb-2">Events Dashboard</h1>
@@ -1310,37 +1392,40 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-slate-700 mb-2">Event Title</label>
+                  <label className="block text-sm text-slate-700 mb-2 font-medium">Event Title</label>
                   <input
                     type="text"
-                    defaultValue={selectedEvent.title}
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                     className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-slate-700 mb-2">Venue</label>
+                    <label className="block text-sm text-slate-700 mb-2 font-medium">Venue</label>
                     <input
                       type="text"
-                      defaultValue={selectedEvent.venue}
+                      value={editForm.venue}
+                      onChange={(e) => setEditForm({ ...editForm, venue: e.target.value })}
                       className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slate-700 mb-2">Capacity</label>
+                    <label className="block text-sm text-slate-700 mb-2 font-medium">Capacity</label>
                     <input
                       type="number"
-                      defaultValue={selectedEvent.capacity}
+                      value={editForm.capacity}
+                      onChange={(e) => setEditForm({ ...editForm, capacity: parseInt(e.target.value) || 0 })}
                       className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
                     />
                   </div>
                 </div>
 
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                  <p className="text-sm text-amber-800">
-                    ⚠️ <strong>Coming Soon:</strong> Full edit functionality is being implemented. For now, you can view the current values. Contact admin for urgent changes.
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <p className="text-sm text-emerald-800">
+                    ✅ <strong>Ready to save:</strong> You can now edit your event details. Changes will be saved immediately.
                   </p>
                 </div>
               </div>
@@ -1349,22 +1434,33 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
             <div className="p-6 border-t border-slate-200 flex gap-3">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
+                disabled={updating}
+                className="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  alert('Edit functionality coming soon!');
-                  setShowEditModal(false);
-                }}
-                className="flex-1 px-6 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                onClick={handleUpdateEvent}
+                disabled={updating || !editForm.title || !editForm.venue || editForm.capacity <= 0}
+                className="flex-1 px-6 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:bg-slate-300 flex items-center justify-center gap-2"
               >
-                Save Changes
+                {updating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Save Changes</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

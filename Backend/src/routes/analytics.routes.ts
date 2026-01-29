@@ -5,6 +5,7 @@ import {
   getClubAnalytics,
   getResourceAnalytics,
   getBudgetAnalytics,
+  getUserAnalytics,
   getLeaderboard,
   exportAnalyticsToCSV,
 } from '../controllers/analytics.controller';
@@ -18,6 +19,7 @@ router.get('/events', getEventAnalytics);
 router.get('/clubs', getClubAnalytics);
 router.get('/resources', getResourceAnalytics);
 router.get('/budget', getBudgetAnalytics);
+router.get('/users', getUserAnalytics);
 router.get('/leaderboard', getLeaderboard);
 router.get('/export', exportAnalyticsToCSV);
 

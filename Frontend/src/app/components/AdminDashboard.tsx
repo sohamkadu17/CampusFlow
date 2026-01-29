@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { 
   Sparkles, Shield, Search, Bell, Settings, LogOut, 
   Calendar, Users, MapPin, FileText, CheckCircle2, 
-  AlertCircle, Clock, ChevronLeft, User, Download, ArrowLeft
+  AlertCircle, Clock, ChevronLeft, User, Download, ArrowLeft, BarChart3
 } from 'lucide-react';
 import { eventAPI } from '../../services/api';
+import AnalyticsDashboard from './AnalyticsDashboard';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -24,11 +25,13 @@ interface PendingEvent {
   description: string;
   resources: string[];
   rulebookUrl: string;
+  imageUrl?: string; // Event poster image
   formLink?: string;
   submittedDate: string;
 }
 
 export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps) {
+  const [view, setView] = useState<'events' | 'analytics'>('events');
   const [selectedEvent, setSelectedEvent] = useState<PendingEvent | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [pendingEvents, setPendingEvents] = useState<PendingEvent[]>([]);
@@ -36,8 +39,10 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadPendingEvents();
-  }, []);
+    if (view === 'events') {
+      loadPendingEvents();
+    }
+  }, [view]);
 
   const loadPendingEvents = async () => {
     try {
@@ -61,6 +66,7 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
         description: event.description,
         resources: event.resources?.map((r: any) => r.resourceName || r) || [],
         rulebookUrl: event.rulebookUrl || '',
+        imageUrl: event.imageUrl || '', // Event poster
         formLink: event.formLink,
         submittedDate: new Date(event.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       }));
@@ -86,6 +92,7 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
           description: 'A 24-hour hackathon where students build innovative solutions to real-world problems.',
           resources: ['Projector', 'WiFi Access', 'Tables & Chairs', 'Refreshments'],
           rulebookUrl: 'hackathon-rules.pdf',
+          imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
           submittedDate: 'Jan 20, 2026',
         },
       ]);
@@ -193,13 +200,30 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
         </div>
       </nav>
 
-      {/* Main Content */}
-      <div className="p-6 max-w-[1400px] mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl text-slate-900 mb-2">Event Approvals</h1>
-          <p className="text-slate-600">Review and approve event submissions</p>
-        </div>
+      {/* Show Analytics Dashboard if view is analytics */}
+      {view === 'analytics' && (
+        <AnalyticsDashboard onBack={() => setView('events')} />
+      )}
+
+      {/* Show Event Approvals if view is events */}
+      {view === 'events' && (
+        <>
+          {/* Main Content */}
+          <div className="p-6 max-w-[1400px] mx-auto">
+            {/* Header */}
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl text-slate-900 mb-2">Event Approvals</h1>
+                <p className="text-slate-600">Review and approve event submissions</p>
+              </div>
+              <button
+                onClick={() => setView('analytics')}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+              >
+                <BarChart3 className="w-5 h-5" />
+                <span className="font-medium">View Analytics</span>
+              </button>
+            </div>
 
         {error && (
           <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
@@ -302,6 +326,26 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
             </div>
 
             <div className="p-6 space-y-6">
+              {/* Event Poster */}
+              {selectedEvent.imageUrl && (
+                <div className="mb-6">
+                  <h3 className="text-sm text-slate-700 mb-3">Event Poster</h3>
+                  <div className="relative rounded-2xl overflow-hidden bg-slate-100 group">
+                    <img 
+                      src={selectedEvent.imageUrl} 
+                      alt={selectedEvent.title}
+                      className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                      <span className="text-white text-sm font-medium">Event Poster</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Event Details */}
               <div>
                 <h3 className="text-xl text-slate-900 mb-4">{selectedEvent.title}</h3>
@@ -359,27 +403,61 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
               {/* Rulebook */}
               {selectedEvent.rulebookUrl && (
                 <div>
-                  <h3 className="text-sm text-slate-700 mb-3">Event Rulebook</h3>
-                  <div className="space-y-2">
-                    <a
-                      href={selectedEvent.rulebookUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => console.log('Opening rulebook:', selectedEvent.rulebookUrl)}
-                      className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-violet-50 hover:bg-violet-100 border border-violet-200 transition-colors group"
-                    >
-                      <div className="w-12 h-12 rounded-xl bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors">
-                        <FileText className="w-6 h-6 text-violet-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-slate-900">View Rulebook PDF</div>
-                        <div className="text-xs text-slate-600">Opens in new tab</div>
-                      </div>
-                      <Download className="w-5 h-5 text-violet-600" />
-                    </a>
-                    <div className="text-xs text-slate-500 px-2 font-mono break-all">
-                      {selectedEvent.rulebookUrl}
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm text-slate-700">Event Rulebook</h3>
+                    <div className="flex gap-2">
+                      <a
+                        href={selectedEvent.rulebookUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 border border-violet-200 transition-colors flex items-center gap-2 text-xs"
+                        title="Open in new tab"
+                      >
+                        <FileText className="w-4 h-4 text-violet-600" />
+                        <span className="text-violet-700">Open</span>
+                      </a>
+                      <a
+                        href={selectedEvent.rulebookUrl}
+                        download
+                        className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors flex items-center gap-2 text-xs"
+                        title="Download PDF"
+                      >
+                        <Download className="w-4 h-4 text-emerald-600" />
+                        <span className="text-emerald-700">Download</span>
+                      </a>
                     </div>
+                  </div>
+                  <div className="rounded-2xl border-2 border-slate-200 overflow-hidden bg-slate-50">
+                    <iframe
+                      src={selectedEvent.rulebookUrl}
+                      className="w-full h-[500px]"
+                      title="Event Rulebook PDF"
+                      onError={(e) => {
+                        console.error('Iframe failed to load PDF:', selectedEvent.rulebookUrl);
+                        (e.target as HTMLIFrameElement).style.display = 'none';
+                        const parent = (e.target as HTMLIFrameElement).parentElement;
+                        if (parent) {
+                          parent.innerHTML = `
+                            <div class="flex flex-col items-center justify-center h-[500px] text-center p-6">
+                              <div class="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-4">
+                                <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                              </div>
+                              <h4 class="text-slate-900 font-medium mb-2">PDF Preview Not Available</h4>
+                              <p class="text-sm text-slate-600 mb-4">Your browser cannot display the PDF inline. Please download or open in a new tab.</p>
+                              <div class="flex gap-2">
+                                <a href="${selectedEvent.rulebookUrl}" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors text-sm font-medium">Open in New Tab</a>
+                                <a href="${selectedEvent.rulebookUrl}" download class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors text-sm font-medium">Download PDF</a>
+                              </div>
+                            </div>
+                          `;
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="text-xs text-slate-500 mt-2 px-2 font-mono break-all">
+                    📎 {selectedEvent.rulebookUrl}
                   </div>
                 </div>
               )}
@@ -438,6 +516,8 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

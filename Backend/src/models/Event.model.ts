@@ -21,7 +21,7 @@ export interface IEvent extends Document {
   rulebookUrl?: string;
   formLink?: string;
   tags: string[];
-  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'completed' | 'changes-requested';
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'completed' | 'changes-requested' | 'live';
   budget: {
     requested: number;
     approved?: number;
@@ -127,7 +127,7 @@ const eventSchema = new Schema<IEvent>(
     ],
     status: {
       type: String,
-      enum: ['draft', 'pending', 'approved', 'rejected', 'completed', 'changes-requested'],
+      enum: ['draft', 'pending', 'approved', 'rejected', 'completed', 'changes-requested', 'live'],
       default: 'draft',
     },
     budget: {

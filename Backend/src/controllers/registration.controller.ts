@@ -23,7 +23,7 @@ export const registerForEvent = async (req: AuthRequest, res: Response): Promise
 
     // Check if event is approved
     if (event.status !== 'approved') {
-      throw new AppError('Event is not open for registration', 400);
+      throw new AppError(`Event is not open for registration. Current status: ${event.status}`, 400);
     }
 
     // Check if already registered
@@ -86,6 +86,12 @@ export const registerForEvent = async (req: AuthRequest, res: Response): Promise
       data: { registration },
     });
   } catch (error: any) {
+    console.error('Registration error:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      userId: req.user?._id,
+      eventId: req.body?.eventId
+    });
     res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || 'Failed to register for event',

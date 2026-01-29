@@ -45,6 +45,37 @@ export const initializeSocketIO = (io: Server): void => {
     });
 
     // Handle chat messages
+    socket.on('send_message', async (data: { roomId: string; content: string; type: string }) => {
+      try {
+        // Save message to database
+        const { ChatMessage } = require('../models/ChatMessage.model');
+        const message = await ChatMessage.create({
+          roomId: data.roomId,
+          senderId: socket.user?._id,
+          content: data.content,
+          type: data.type || 'text',
+        });
+
+        // Populate sender info
+        await message.populate('senderId', 'name email');
+
+        // Update room's last message
+        const { ChatRoom } = require('../models/ChatRoom.model');
+        await ChatRoom.findByIdAndUpdate(data.roomId, {
+          lastMessage: {
+            content: data.content,
+            timestamp: new Date(),
+            senderId: socket.user?._id,
+          },
+        });
+
+        // Emit to all users in the room
+        io.to(`room:${data.roomId}`).emit('new_message', message);
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
+    });
+
     socket.on('chat:message', (data: { roomId: string; message: string }) => {
       io.to(`room:${data.roomId}`).emit('chat:message', {
         userId: socket.user?._id,
@@ -54,6 +85,13 @@ export const initializeSocketIO = (io: Server): void => {
     });
 
     // Typing indicators
+    socket.on('typing', (data: { roomId: string }) => {
+      socket.to(`room:${data.roomId}`).emit('user_typing', {
+        userId: socket.user?._id,
+        roomId: data.roomId,
+      });
+    });
+
     socket.on('chat:typing', (data: { roomId: string; isTyping: boolean }) => {
       socket.to(`room:${data.roomId}`).emit('chat:typing', {
         userId: socket.user?._id,

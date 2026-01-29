@@ -177,7 +177,7 @@ export const deleteEvent = async (req: AuthRequest, res: Response): Promise<void
     }
 
     // Check if user is the organizer or admin
-    if (event.organizerId !== req.user!._id.toString() && req.user!.role !== 'admin') {
+    if (event.organizerId.toString() !== req.user!._id.toString() && req.user!.role !== 'admin') {
       throw new AppError('Not authorized to delete this event', 403);
     }
 
@@ -203,7 +203,8 @@ export const submitEventForApproval = async (req: AuthRequest, res: Response): P
       throw new AppError('Event not found', 404);
     }
 
-    if (event.organizerId !== req.user!._id.toString()) {
+    // Fix: Convert both to strings for proper comparison
+    if (event.organizerId.toString() !== req.user!._id.toString()) {
       throw new AppError('Not authorized to submit this event', 403);
     }
 

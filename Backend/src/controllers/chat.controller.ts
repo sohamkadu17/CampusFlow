@@ -7,9 +7,11 @@ import { emitToChatRoom } from '../config/socket';
 
 export const getChatRooms = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const rooms = await ChatRoom.find({
-      participants: req.user!._id,
-    }).sort({ 'lastMessage.timestamp': -1 });
+    // Return all rooms so students can see organizer-created discussion rooms
+    // Organizers create rooms, students can join them
+    const rooms = await ChatRoom.find({})
+      .sort({ 'lastMessage.timestamp': -1 })
+      .limit(50); // Limit to prevent performance issues
 
     res.status(200).json({
       success: true,

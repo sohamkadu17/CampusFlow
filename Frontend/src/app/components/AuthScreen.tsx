@@ -15,6 +15,9 @@ export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [department, setDepartment] = useState('');
+  const [year, setYear] = useState('');
+  const [clubName, setClubName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -99,11 +102,32 @@ export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
         }
       } else {
         // Registration flow
-        const { error: signUpError } = await auth.signUp(email, password, { name, role: selectedRole });
+        const { error: signUpError } = await auth.signUp(email, password, { 
+          name, 
+          role: selectedRole,
+          department,
+          year: year ? parseInt(year) : undefined
+        });
         if (signUpError) throw signUpError;
 
+        // Prepare club data if provided
+        const clubData = clubName ? [{
+          clubId: clubName.toLowerCase().replace(/\s+/g, '-'),
+          clubName: clubName,
+          role: 'member',
+          joinedAt: new Date()
+        }] : [];
+
         // Sync with backend
-        await authAPI.register({ email, password, name, role: selectedRole });
+        await authAPI.register({ 
+          email, 
+          password, 
+          name, 
+          role: selectedRole,
+          department,
+          year: year ? parseInt(year) : undefined,
+          clubs: clubData
+        });
         
         alert('Registration successful! Please check your email to verify your account.');
         setIsSignUp(false);
@@ -195,22 +219,69 @@ export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
             {/* Sign Up Name Field */}
             {isSignUp && (
-              <div>
-                <label className="block text-sm text-slate-700 mb-2">Full Name</label>
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                    <User className="w-5 h-5 text-slate-400" />
+              <>
+                <div>
+                  <label className="block text-sm text-slate-700 mb-2">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${config.color}-500"
+                      placeholder="Enter your full name"
+                      required
+                    />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-700 mb-2">Department</label>
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${config.color}-500"
+                    required
+                  >
+                    <option value="">Select Department</option>
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Information Technology">Information Technology</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Mechanical">Mechanical</option>
+                    <option value="Civil">Civil</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-700 mb-2">Year</label>
+                  <select
+                    value={year}
+                    onChange={(e) => setYear(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${config.color}-500"
+                    required
+                  >
+                    <option value="">Select Year</option>
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-700 mb-2">Club Membership (Optional)</label>
                   <input
                     type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your full name"
-                    className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                    required
+                    value={clubName}
+                    onChange={(e) => setClubName(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${config.color}-500"
+                    placeholder="e.g., Tech Club, Cultural Club"
                   />
+                  <p className="text-xs text-slate-500 mt-1">You can add more clubs later from your profile</p>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Email Field */}

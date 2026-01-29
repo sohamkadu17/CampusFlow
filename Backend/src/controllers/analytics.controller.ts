@@ -130,14 +130,27 @@ export const getClubAnalytics = async (_req: AuthRequest, res: Response): Promis
     const clubAnalytics = Object.values(clubStats).map((club: any) => {
       const eventData = eventsPerClub.find((e) => e._id === club.clubId);
       return {
-        ...club,
-        eventCount: eventData?.eventCount || 0,
+        clubName: club.clubName,
+        metrics: {
+          memberCount: club.memberCount,
+          eventCount: eventData?.eventCount || 0,
+          adminCount: club.adminCount,
+          leadCount: club.leadCount,
+        }
       };
     });
 
+    // Sort by member count and take top 10
+    const topClubs = clubAnalytics
+      .sort((a, b) => b.metrics.memberCount - a.metrics.memberCount)
+      .slice(0, 10);
+
     res.status(200).json({
       success: true,
-      data: { clubs: clubAnalytics },
+      data: { 
+        clubStats: {},
+        topClubs: topClubs
+      },
     });
   } catch (error: any) {
     res.status(error.statusCode || 500).json({
@@ -339,6 +352,52 @@ export const getLeaderboard = async (_req: AuthRequest, res: Response): Promise<
     res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || 'Failed to get leaderboard',
+    });
+  }
+};
+
+export const getUserAnalytics = async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const studentCount = await User.countDocuments({ role: 'student' });
+    const organizerCount = await User.countDocuments({ role: 'organizer' });
+    const adminCount = await User.countDocuments({ role: 'admin' });
+
+    // Users by department
+    const usersByDepartment = await User.aggregate([
+      { $group: { _id: '$department', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    // Recent registrations (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentUsers = await User.countDocuments({
+      createdAt: { $gte: thirtyDaysAgo },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        overview: {
+          totalUsers,
+          studentCount,
+          organizerCount,
+          adminCount,
+          recentUsers,
+        },
+        usersByDepartment,
+        roleDistribution: [
+          { role: 'Student', count: studentCount },
+          { role: 'Organizer', count: organizerCount },
+          { role: 'Admin', count: adminCount },
+        ],
+      },
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to get user analytics',
     });
   }
 };

@@ -3,11 +3,13 @@ import {
   Sparkles, Search, Bell, Settings, LogOut, 
   Calendar, Users, MapPin, FileText, Star,
   Clock, User, Filter, Grid, List, Heart,
-  QrCode, CheckCircle2, Download, ChevronRight, ArrowLeft
+  QrCode, CheckCircle2, Download, ChevronRight, ArrowLeft, MessageCircle, CalendarDays
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
 import { eventAPI, registrationAPI } from '../../services/api';
+import ChatInterface from './ChatInterface';
+import ResourceBookingCalendar from './ResourceBookingCalendar';
 
 interface StudentDashboardProps {
   onLogout: () => void;
@@ -40,6 +42,7 @@ interface RegisteredEvent extends Event {
 }
 
 export default function StudentDashboard({ onLogout, onHome }: StudentDashboardProps) {
+  const [view, setView] = useState<'main' | 'chat' | 'calendar'>('main');
   const [activeTab, setActiveTab] = useState<'discover' | 'registered' | 'clubs'>('discover');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -51,9 +54,11 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
   const categories = ['all', 'Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar'];
 
   useEffect(() => {
-    loadEvents();
-    loadRegisteredEvents();
-  }, []);
+    if (view === 'main') {
+      loadEvents();
+      loadRegisteredEvents();
+    }
+  }, [view]);
 
   const loadEvents = async () => {
     try {
@@ -104,16 +109,21 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
       // If event has a registration form link, open it in new tab
       if (event?.formLink) {
         window.open(event.formLink, '_blank', 'noopener,noreferrer');
+        alert('Registration form opened in new tab. Please complete it there.');
         return;
       }
       
       // Otherwise, use the backend registration system
-      await registrationAPI.register(eventId);
+      console.log('Attempting to register for event:', eventId);
+      const response = await registrationAPI.register(eventId);
+      console.log('Registration response:', response);
       alert('Registration successful! Check the "My Events" tab to view your QR code.');
       loadRegisteredEvents();
       loadEvents(); // Refresh to update registration count
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Registration failed. Please try again.');
+      console.error('Registration error:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Registration failed. Please try again.';
+      alert(errorMsg);
     }
   };
 
@@ -163,6 +173,18 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
                 <Bell className="w-5 h-5 text-slate-600" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full"></span>
               </button>
+              <button 
+                onClick={() => setView('chat')}
+                className={`w-10 h-10 rounded-xl ${view === 'chat' ? 'bg-indigo-100' : 'bg-slate-100 hover:bg-slate-200'} flex items-center justify-center transition-colors`}
+              >
+                <MessageCircle className={`w-5 h-5 ${view === 'chat' ? 'text-indigo-600' : 'text-slate-600'}`} />
+              </button>
+              <button 
+                onClick={() => setView('calendar')}
+                className={`w-10 h-10 rounded-xl ${view === 'calendar' ? 'bg-indigo-100' : 'bg-slate-100 hover:bg-slate-200'} flex items-center justify-center transition-colors`}
+              >
+                <CalendarDays className={`w-5 h-5 ${view === 'calendar' ? 'text-indigo-600' : 'text-slate-600'}`} />
+              </button>
               <button className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
                 <Settings className="w-5 h-5 text-slate-600" />
               </button>
@@ -196,8 +218,19 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
         </div>
       </nav>
 
+      {/* Show Chat Interface */}
+      {view === 'chat' && (
+        <ChatInterface onBack={() => setView('main')} />
+      )}
+
+      {/* Show Resource Booking Calendar */}
+      {view === 'calendar' && (
+        <ResourceBookingCalendar onBack={() => setView('main')} />
+      )}
+
       {/* Main Content */}
-      <div className="p-6 max-w-[1800px] mx-auto">
+      {view === 'main' && (
+        <div className="p-6 max-w-[1800px] mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl text-slate-900 mb-2">Welcome back! 👋</h1>
@@ -415,7 +448,8 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
             )}
           </div>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
