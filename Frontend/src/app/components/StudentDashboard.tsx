@@ -3,7 +3,7 @@ import {
   Sparkles, Search, Bell, Settings, LogOut, 
   Calendar, Users, MapPin, FileText, Star,
   Clock, User, Filter, Grid, List, Heart,
-  QrCode, CheckCircle2, Download, ChevronRight
+  QrCode, CheckCircle2, Download, ChevronRight, ArrowLeft
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
@@ -27,6 +27,7 @@ interface Event {
   description: string;
   imageUrl: string;
   hasRulebook: boolean;
+  formLink?: string; // Optional registration form link
   tags: string[];
   isFavorite?: boolean;
   status?: string;
@@ -97,6 +98,16 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
 
   const handleRegister = async (eventId: string) => {
     try {
+      // Find the event to check if it has a form link
+      const event = events.find(e => e.id === eventId);
+      
+      // If event has a registration form link, open it in new tab
+      if (event?.formLink) {
+        window.open(event.formLink, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      
+      // Otherwise, use the backend registration system
       await registrationAPI.register(eventId);
       alert('Registration successful! Check the "My Events" tab to view your QR code.');
       loadRegisteredEvents();
@@ -157,12 +168,16 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
               </button>
               <div className="h-6 w-px bg-slate-200"></div>
               {onHome && (
-                <button 
-                  onClick={onHome}
-                  className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
-                >
-                  <span className="text-sm font-medium">Home</span>
-                </button>
+                <>
+                  <button 
+                    onClick={onHome}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-all"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="text-sm font-medium">Back to Home</span>
+                  </button>
+                  <div className="h-6 w-px bg-slate-200"></div>
+                </>
               )}
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
@@ -328,7 +343,11 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
                         className="w-full px-4 py-3 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         <CheckCircle2 className="w-5 h-5" />
-                        {event.registered >= event.capacity ? 'Event Full' : 'Register Now'}
+                        {event.registered >= event.capacity 
+                          ? 'Event Full' 
+                          : event.formLink 
+                            ? 'Register via Form' 
+                            : 'Register Now'}
                       </button>
                     </div>
                   </div>

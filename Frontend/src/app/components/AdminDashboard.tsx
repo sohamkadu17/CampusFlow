@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { 
   Sparkles, Shield, Search, Bell, Settings, LogOut, 
   Calendar, Users, MapPin, FileText, CheckCircle2, 
-  AlertCircle, Clock, ChevronLeft, User, Download
+  AlertCircle, Clock, ChevronLeft, User, Download, ArrowLeft
 } from 'lucide-react';
 import { eventAPI } from '../../services/api';
 
@@ -24,6 +24,7 @@ interface PendingEvent {
   description: string;
   resources: string[];
   rulebookUrl: string;
+  formLink?: string;
   submittedDate: string;
 }
 
@@ -42,7 +43,31 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
     try {
       setLoading(true);
       const response = await eventAPI.getPending();
-      setPendingEvents(response.data.data.events || []);
+      const events = response.data.data.events || [];
+      
+      console.log('Admin - Pending events:', events); // Debug
+      
+      // Transform backend data to match interface
+      const transformedEvents = events.map((event: any) => ({
+        id: event._id || event.id,
+        title: event.title,
+        organizer: event.organizerName,
+        club: event.clubs?.[0]?.clubName || 'N/A',
+        date: new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        time: event.time,
+        venue: event.venue,
+        capacity: event.capacity,
+        category: event.category,
+        description: event.description,
+        resources: event.resources?.map((r: any) => r.resourceName || r) || [],
+        rulebookUrl: event.rulebookUrl || '',
+        formLink: event.formLink,
+        submittedDate: new Date(event.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      }));
+      
+      console.log('Transformed events with rulebook URLs:', transformedEvents); // Debug
+      
+      setPendingEvents(transformedEvents);
     } catch (err: any) {
       setError('Failed to load pending events');
       console.error('Error loading pending events:', err);
@@ -140,12 +165,16 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
               </button>
               <div className="h-6 w-px bg-slate-200"></div>
               {onHome && (
-                <button 
-                  onClick={onHome}
-                  className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
-                >
-                  <span className="text-sm font-medium">Home</span>
-                </button>
+                <>
+                  <button 
+                    onClick={onHome}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-all"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="text-sm font-medium">Back to Home</span>
+                  </button>
+                  <div className="h-6 w-px bg-slate-200"></div>
+                </>
               )}
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
@@ -326,6 +355,56 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
                   ))}
                 </div>
               </div>
+
+              {/* Rulebook */}
+              {selectedEvent.rulebookUrl && (
+                <div>
+                  <h3 className="text-sm text-slate-700 mb-3">Event Rulebook</h3>
+                  <div className="space-y-2">
+                    <a
+                      href={selectedEvent.rulebookUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => console.log('Opening rulebook:', selectedEvent.rulebookUrl)}
+                      className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-violet-50 hover:bg-violet-100 border border-violet-200 transition-colors group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors">
+                        <FileText className="w-6 h-6 text-violet-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-slate-900">View Rulebook PDF</div>
+                        <div className="text-xs text-slate-600">Opens in new tab</div>
+                      </div>
+                      <Download className="w-5 h-5 text-violet-600" />
+                    </a>
+                    <div className="text-xs text-slate-500 px-2 font-mono break-all">
+                      {selectedEvent.rulebookUrl}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Registration Form Link */}
+              {selectedEvent.formLink && (
+                <div>
+                  <h3 className="text-sm text-slate-700 mb-3">Registration Form</h3>
+                  <a
+                    href={selectedEvent.formLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors">
+                      <FileText className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-slate-900">View Registration Form</div>
+                      <div className="text-xs text-slate-600">Opens in new tab</div>
+                    </div>
+                    <Download className="w-5 h-5 text-emerald-600" />
+                  </a>
+                </div>
+              )}
 
               {/* Review Notes */}
               <div>

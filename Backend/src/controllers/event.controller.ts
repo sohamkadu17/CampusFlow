@@ -14,6 +14,8 @@ export const createEvent = async (req: AuthRequest, res: Response): Promise<void
       description,
       category,
       clubs,
+      startDate,
+      endDate,
       date,
       time,
       venue,
@@ -22,11 +24,20 @@ export const createEvent = async (req: AuthRequest, res: Response): Promise<void
       budget,
       resources,
       isJointEvent,
+      rulebookUrl,
+      formLink,
+      imageUrl,
     } = req.body;
 
-    if (!title || !description || !category || !date || !time || !venue || !capacity) {
+    if (!title || !description || !category || !(startDate || date) || !venue || !capacity) {
       throw new AppError('Please provide all required fields', 400);
     }
+
+    // Handle both old (date/time) and new (startDate/endDate) formats
+    const eventDate = startDate ? new Date(startDate) : new Date(date);
+    const eventTime = startDate 
+      ? new Date(startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) 
+      : (time || '12:00 PM');
 
     const event = await Event.create({
       title,
@@ -35,8 +46,8 @@ export const createEvent = async (req: AuthRequest, res: Response): Promise<void
       organizerId: req.user!._id,
       organizerName: req.user!.name,
       clubs: clubs || [],
-      date: new Date(date),
-      time,
+      date: eventDate,
+      time: eventTime,
       venue,
       capacity,
       tags: tags || [],
@@ -44,12 +55,15 @@ export const createEvent = async (req: AuthRequest, res: Response): Promise<void
       resources: resources || [],
       isJointEvent: isJointEvent || false,
       status: 'draft',
+      rulebookUrl: rulebookUrl || undefined,
+      formLink: formLink || undefined,
+      imageUrl: imageUrl || undefined,
     });
 
     res.status(201).json({
       success: true,
       message: 'Event created successfully',
-      data: { event },
+      data: event,
     });
   } catch (error: any) {
     res.status(error.statusCode || 500).json({

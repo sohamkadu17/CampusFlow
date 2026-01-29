@@ -19,6 +19,7 @@ export interface IEvent extends Document {
   registeredCount: number;
   imageUrl?: string;
   rulebookUrl?: string;
+  formLink?: string;
   tags: string[];
   status: 'draft' | 'pending' | 'approved' | 'rejected' | 'completed' | 'changes-requested';
   budget: {
@@ -94,7 +95,8 @@ const eventSchema = new Schema<IEvent>(
     },
     time: {
       type: String,
-      required: true,
+      required: false,
+      default: '12:00 PM',
     },
     venue: {
       type: String,
@@ -113,6 +115,9 @@ const eventSchema = new Schema<IEvent>(
       type: String,
     },
     rulebookUrl: {
+      type: String,
+    },
+    formLink: {
       type: String,
     },
     tags: [
