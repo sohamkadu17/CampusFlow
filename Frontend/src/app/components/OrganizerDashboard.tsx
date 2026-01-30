@@ -46,6 +46,8 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
   const [updating, setUpdating] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'draft' | 'published'>('all');
   const [registrations, setRegistrations] = useState<any[]>([]);
+  const [availableResources, setAvailableResources] = useState<any[]>([]);
+  const [loadingResources, setLoadingResources] = useState(false);
   const [eventData, setEventData] = useState({
     title: '',
     description: '',
@@ -132,6 +134,13 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
     };
   }, [showNotifications]);
 
+  // Fetch resources when step 1 or 2 is reached or event dates change
+  useEffect(() => {
+    if ((currentStep === 1 || currentStep === 2) && showWizard) {
+      fetchAvailableResources();
+    }
+  }, [currentStep, showWizard, eventData.startDate, eventData.endDate, eventData.startTime, eventData.endTime]);
+
   const fetchEvents = async () => {
     try {
       setFetchingEvents(true);
@@ -169,6 +178,57 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
       setError(err.response?.data?.message || 'Failed to load events');
     } finally {
       setFetchingEvents(false);
+    }
+  };
+
+  const fetchAvailableResources = async () => {
+    try {
+      setLoadingResources(true);
+      const token = localStorage.getItem('token');
+      const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api';
+      
+      const response = await axios.get(`${API_URL}/resources`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const resources = response.data.data?.resources || [];
+      
+      // Check availability for each resource if dates are set
+      if (eventData.startDate && eventData.endDate && eventData.startTime && eventData.endTime) {
+        const startDateTime = new Date(`${eventData.startDate}T${eventData.startTime}`);
+        const endDateTime = new Date(`${eventData.endDate}T${eventData.endTime}`);
+        
+        const resourcesWithAvailability = await Promise.all(
+          resources.map(async (resource: any) => {
+            try {
+              const availabilityResponse = await axios.post(
+                `${API_URL}/bookings/check-availability`,
+                {
+                  resourceId: resource._id,
+                  startTime: startDateTime.toISOString(),
+                  endTime: endDateTime.toISOString(),
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              return {
+                ...resource,
+                isAvailable: availabilityResponse.data.data?.available || false,
+                conflicts: availabilityResponse.data.data?.conflicts || [],
+              };
+            } catch (err) {
+              return { ...resource, isAvailable: true, conflicts: [] };
+            }
+          })
+        );
+        setAvailableResources(resourcesWithAvailability);
+      } else {
+        setAvailableResources(resources.map((r: any) => ({ ...r, isAvailable: true, conflicts: [] })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch resources:', err);
+      setAvailableResources([]);
+    } finally {
+      setLoadingResources(false);
     }
   };
 
@@ -895,13 +955,27 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                   </div>
                   <div>
                     <label className="block text-sm text-slate-700 mb-2">Venue</label>
-                    <input
-                      type="text"
-                      value={eventData.venue}
-                      onChange={(e) => setEventData({ ...eventData, venue: e.target.value })}
-                      placeholder="e.g., Main Auditorium"
-                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
-                    />
+                    <p className="text-sm text-slate-500 mb-3">Select venue from available facilities</p>
+                    {loadingResources ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 text-violet-600 animate-spin" />
+                      </div>
+                    ) : (
+                      <select
+                        value={eventData.venue}
+                        onChange={(e) => setEventData({ ...eventData, venue: e.target.value })}
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                      >
+                        <option value="">Select venue</option>
+                        {availableResources
+                          .filter((r: any) => r.type === 'hall' || r.type === 'room')
+                          .map((resource: any) => (
+                            <option key={resource._id} value={resource.name}>
+                              {resource.name} (Cap: {resource.capacity})
+                            </option>
+                          ))}
+                      </select>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm text-slate-700 mb-2">Capacity</label>
@@ -920,26 +994,98 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm text-slate-700 mb-2">Required Resources</label>
-                    <p className="text-sm text-slate-500 mb-4">Select the resources you need for this event</p>
-                    <div className="space-y-3">
-                      {['Projector', 'Microphone System', 'Tables & Chairs', 'WiFi Access', 'Refreshments', 'Security Personnel'].map((resource) => (
-                        <label key={resource} className="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={eventData.resources.includes(resource)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setEventData({ ...eventData, resources: [...eventData.resources, resource] });
-                              } else {
-                                setEventData({ ...eventData, resources: eventData.resources.filter(r => r !== resource) });
-                              }
-                            }}
-                            className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-200"
-                          />
-                          <span className="text-slate-700">{resource}</span>
-                        </label>
-                      ))}
-                    </div>
+                    <p className="text-sm text-slate-500 mb-4">
+                      {eventData.startDate && eventData.endDate 
+                        ? 'Select the resources you need - availability is checked based on your event timing'
+                        : 'Please set event dates first to check resource availability'}
+                    </p>
+                    
+                    {loadingResources ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
+                      </div>
+                    ) : availableResources.length > 0 ? (
+                      <div className="space-y-3">
+                        {availableResources.map((resource) => {
+                          const isSelected = eventData.resources.includes(resource.name);
+                          return (
+                            <label 
+                              key={resource._id} 
+                              className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                                isSelected 
+                                  ? 'border-violet-500 bg-violet-50' 
+                                  : resource.isAvailable 
+                                    ? 'border-slate-200 hover:bg-slate-50' 
+                                    : 'border-red-200 bg-red-50 opacity-60'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                disabled={!resource.isAvailable}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEventData({ ...eventData, resources: [...eventData.resources, resource.name] });
+                                  } else {
+                                    setEventData({ ...eventData, resources: eventData.resources.filter(r => r !== resource.name) });
+                                  }
+                                }}
+                                className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-200 mt-0.5"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-medium text-slate-900">{resource.name}</span>
+                                  {resource.isAvailable ? (
+                                    <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                                      Available
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">
+                                      Booked
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-sm text-slate-600 space-y-1">
+                                  <div className="flex items-center gap-4">
+                                    <span className="flex items-center gap-1">
+                                      <MapPin className="w-3 h-3" />
+                                      {resource.location}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Users className="w-3 h-3" />
+                                      {resource.capacity} capacity
+                                    </span>
+                                  </div>
+                                  {resource.features && resource.features.length > 0 && (
+                                    <div className="text-xs text-slate-500">
+                                      Features: {resource.features.slice(0, 3).join(', ')}
+                                      {resource.features.length > 3 && ` +${resource.features.length - 3} more`}
+                                    </div>
+                                  )}
+                                  {!resource.isAvailable && resource.conflicts && resource.conflicts.length > 0 && (
+                                    <div className="text-xs text-red-600 mt-1">
+                                      Conflict: Booked {new Date(resource.conflicts[0].startTime).toLocaleTimeString()} - {new Date(resource.conflicts[0].endTime).toLocaleTimeString()}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-slate-500">
+                        <MapPin className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>No resources available. Please contact administrator.</p>
+                      </div>
+                    )}
+                    
+                    {!eventData.startDate || !eventData.endDate && (
+                      <div className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                        <AlertCircle className="w-4 h-4 inline mr-2" />
+                        Set event dates in the Schedule step to check resource availability
+                      </div>
+                    )}
                   </div>
                   
                   <div>
