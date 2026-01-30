@@ -2,7 +2,7 @@
 import { 
   Sparkles, Plus, Calendar, Users, Settings, Bell, Search, 
   LogOut, Upload, FileText, ChevronRight, Check, Clock, 
-  AlertCircle, CheckCircle2, XCircle, MapPin, User, ExternalLink, Loader2, ArrowLeft, Home, MessageCircle, CalendarDays
+  AlertCircle, CheckCircle2, XCircle, MapPin, User, ExternalLink, Loader2, ArrowLeft, Home, MessageCircle, CalendarDays, Package
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import api, { eventAPI, notificationAPI } from '../../services/api';
@@ -56,6 +56,20 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [availableResources, setAvailableResources] = useState<any[]>([]);
   const [loadingResources, setLoadingResources] = useState(false);
+  const [venueAvailability, setVenueAvailability] = useState<{[key: string]: {available: boolean, conflicts?: any[]}}>({});
+  const [checkingVenues, setCheckingVenues] = useState(false);
+  
+  // Predefined venue options
+  const venueOptions = [
+    { value: 'Old Seminar Hall', label: 'Old Seminar Hall', capacity: 100 },
+    { value: 'New Seminar Hall', label: 'New Seminar Hall', capacity: 100 },
+    { value: 'Main Auditorium', label: 'Main Auditorium', capacity: 500 },
+    { value: 'Lawn', label: 'Lawn', capacity: 200 },
+    { value: 'Conference Room A', label: 'Conference Room A', capacity: 50 },
+    { value: 'Conference Room B', label: 'Conference Room B', capacity: 50 },
+    { value: 'Open Air Theatre', label: 'Open Air Theatre', capacity: 300 },
+  ];
+  
   const [eventData, setEventData] = useState({
     title: '',
     description: '',
@@ -148,8 +162,12 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
 
   // Fetch resources when step 1 or 2 is reached or event dates change
   useEffect(() => {
-    if ((currentStep === 1 || currentStep === 2) && showWizard) {
+    if ((currentStep === 1 || currentStep === 3) && showWizard) {
       fetchAvailableResources();
+    }
+    // Check venue availability when dates/times change
+    if (currentStep === 1 && eventData.startDate && eventData.startTime && eventData.endDate && eventData.endTime) {
+      checkVenueAvailability();
     }
   }, [currentStep, showWizard, eventData.startDate, eventData.endDate, eventData.startTime, eventData.endTime]);
 
@@ -241,6 +259,116 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
       setAvailableResources([]);
     } finally {
       setLoadingResources(false);
+    }
+  };
+
+  const checkVenueAvailability = async () => {
+    if (!eventData.startDate || !eventData.endDate || !eventData.startTime || !eventData.endTime) {
+      return;
+    }
+
+    try {
+      setCheckingVenues(true);
+      const token = localStorage.getItem('token');
+      const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api';
+      
+      const startDateTime = new Date(`${eventData.startDate}T${eventData.startTime}`);
+      const endDateTime = new Date(`${eventData.endDate}T${eventData.endTime}`);
+      
+      console.log('Checking venue availability for:', {
+        startDateTime: startDateTime.toISOString(),
+        endDateTime: endDateTime.toISOString()
+      });
+      
+      // Check availability for all venues
+      const availabilityChecks = await Promise.all(
+        venueOptions.map(async (venue) => {
+          try {
+            // Query all events (pending, approved, live, draft) that use this venue
+            // Exclude only rejected and cancelled events
+            const response = await axios.get(`${API_URL}/events`, {
+              headers: { Authorization: `Bearer ${token}` },
+              params: {
+                venue: venue.value,
+                limit: 100 // Get more events to check
+              }
+            });
+            
+            const events = response.data.data?.events || [];
+            
+            console.log(`Found ${events.length} events for ${venue.value}:`, events.map((e: any) => ({
+              title: e.title,
+              status: e.status,
+              startDate: e.startDate,
+              endDate: e.endDate,
+              date: e.date
+            })));
+            
+            // Filter out rejected and cancelled events
+            const activeEvents = events.filter((e: any) => 
+              e.status !== 'rejected' && e.status !== 'cancelled'
+            );
+            
+            console.log(`${activeEvents.length} active events for ${venue.value}`);
+            
+            // Check for time conflicts
+            const conflicts = activeEvents.filter((event: any) => {
+              // Use startDate/endDate if available, otherwise fall back to date
+              const eventStart = event.startDate ? new Date(event.startDate) : new Date(event.date);
+              const eventEnd = event.endDate ? new Date(event.endDate) : new Date(event.date);
+              
+              // Check overlap
+              const hasConflict = (
+                (startDateTime >= eventStart && startDateTime < eventEnd) ||
+                (endDateTime > eventStart && endDateTime <= eventEnd) ||
+                (startDateTime <= eventStart && endDateTime >= eventEnd)
+              );
+              
+              if (hasConflict) {
+                console.log(`Conflict found with "${event.title}":`, {
+                  eventStart: eventStart.toISOString(),
+                  eventEnd: eventEnd.toISOString(),
+                  checkStart: startDateTime.toISOString(),
+                  checkEnd: endDateTime.toISOString()
+                });
+              }
+              
+              return hasConflict;
+            });
+            
+            console.log(`${conflicts.length} conflicts for ${venue.value}`);
+            
+            return {
+              venue: venue.value,
+              available: conflicts.length === 0,
+              conflicts: conflicts.map((e: any) => ({
+                title: e.title,
+                startTime: e.startDate || e.date,
+                endTime: e.endDate || e.date,
+                status: e.status,
+              }))
+            };
+          } catch (err) {
+            console.error(`Failed to check ${venue.value}:`, err);
+            return { venue: venue.value, available: true, conflicts: [] };
+          }
+        })
+      );
+      
+      // Convert array to object
+      const availabilityMap: {[key: string]: {available: boolean, conflicts?: any[]}} = {};
+      availabilityChecks.forEach(check => {
+        availabilityMap[check.venue] = {
+          available: check.available,
+          conflicts: check.conflicts
+        };
+      });
+      
+      setVenueAvailability(availabilityMap);
+    } catch (err) {
+      console.error('Failed to check venue availability:', err);
+    } finally {
+      setCheckingVenues(false);
     }
   };
 
@@ -342,7 +470,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
 
       // Validate required fields
       if (!eventData.title || !eventData.category || !eventData.startDate || !eventData.venue || !eventData.capacity) {
-        setError('Please fill in all required fields');
+        setError('Please fill in all required fields including venue');
         return;
       }
 
@@ -355,6 +483,20 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
       // Validate rulebook is required
       if (!eventData.rulebookFile) {
         setError('Rulebook PDF is required for event submission');
+        return;
+      }
+
+      // Check file sizes before upload
+      const posterSize = eventData.posterImage.size / (1024 * 1024); // MB
+      const rulebookSize = eventData.rulebookFile.size / (1024 * 1024); // MB
+      
+      if (posterSize > 10) {
+        setError(`Poster image is too large (${posterSize.toFixed(1)}MB). Maximum size is 10MB.`);
+        return;
+      }
+      
+      if (rulebookSize > 50) {
+        setError(`Rulebook PDF is too large (${rulebookSize.toFixed(1)}MB). Maximum size is 50MB.`);
         return;
       }
 
@@ -388,47 +530,72 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
       const token = localStorage.getItem('token');
       const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api';
 
-      // Upload poster via backend API
+      // Upload files - try parallel first, fall back to sequential if it fails
       try {
         const posterFormData = new FormData();
         posterFormData.append('poster', eventData.posterImage);
         
-        const posterResponse = await axios.post(
-          `${apiUrl}/events/${eventId}/poster`,
-          posterFormData,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'multipart/form-data'
-            }
-          }
-        );
-        console.log('Poster uploaded:', posterResponse.data);
-      } catch (uploadErr: any) {
-        console.error('Poster upload failed:', uploadErr);
-        setError(`Failed to upload poster: ${uploadErr.response?.data?.message || uploadErr.message}`);
-        return;
-      }
-
-      // Upload rulebook via backend API
-      try {
         const rulebookFormData = new FormData();
         rulebookFormData.append('rulebook', eventData.rulebookFile);
         
-        await axios.post(
-          `${apiUrl}/events/${eventId}/rulebook`,
-          rulebookFormData,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'multipart/form-data'
-            }
-          }
-        );
-        console.log('Rulebook uploaded via backend');
+        const uploadConfig = {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          },
+          timeout: 180000, // 3 minutes
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity
+        };
+
+        console.log('Starting file uploads...');
+        
+        try {
+          // Try parallel upload first (faster)
+          await Promise.all([
+            axios.post(`${apiUrl}/events/${eventId}/poster`, posterFormData, uploadConfig),
+            axios.post(`${apiUrl}/events/${eventId}/rulebook`, rulebookFormData, uploadConfig)
+          ]);
+          console.log('Parallel upload successful');
+        } catch (parallelErr: any) {
+          console.warn('Parallel upload failed, trying sequential...', parallelErr.message);
+          
+          // Fall back to sequential upload
+          await axios.post(`${apiUrl}/events/${eventId}/poster`, posterFormData, uploadConfig);
+          console.log('Poster uploaded');
+          
+          await axios.post(`${apiUrl}/events/${eventId}/rulebook`, rulebookFormData, uploadConfig);
+          console.log('Rulebook uploaded');
+        }
+        
+        console.log('All files uploaded successfully');
       } catch (uploadErr: any) {
-        console.error('Rulebook upload failed:', uploadErr);
-        setError(`Failed to upload rulebook: ${uploadErr.response?.data?.message || uploadErr.message}`);
+        console.error('File upload failed:', uploadErr);
+        
+        // Better error message
+        let errorMessage = 'Failed to upload files';
+        if (uploadErr.code === 'ECONNABORTED') {
+          errorMessage = 'Upload timeout exceeded. Please try with smaller files or check your internet connection.';
+        } else if (uploadErr.response) {
+          errorMessage = uploadErr.response.data?.message || `Server error: ${uploadErr.response.status}`;
+        } else if (uploadErr.request) {
+          errorMessage = 'No response from server. Please check if the backend is running and your connection is stable.';
+        } else {
+          errorMessage = uploadErr.message;
+        }
+        
+        setError(errorMessage);
+        
+        // Try to delete the created event since upload failed
+        try {
+          await axios.delete(`${apiUrl}/events/${eventId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          console.log('Cleaned up failed event');
+        } catch (deleteErr) {
+          console.error('Failed to cleanup event:', deleteErr);
+        }
+        
         return;
       }
 
@@ -973,30 +1140,112 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                       />
                     </div>
                   </div>
+                  
+                  {/* Venue Selection with Availability */}
                   <div>
-                    <label className="block text-sm text-slate-700 mb-2">Venue</label>
-                    <p className="text-sm text-slate-500 mb-3">Select venue from available facilities</p>
-                    {loadingResources ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="w-6 h-6 text-violet-600 animate-spin" />
+                    <label className="block text-sm text-slate-700 mb-2">
+                      Venue
+                      <span className="text-red-600 ml-1">*</span>
+                    </label>
+                    <p className="text-sm text-slate-500 mb-3">
+                      Select a venue for your event. Availability is checked based on approved events.
+                    </p>
+                    
+                    {checkingVenues ? (
+                      <div className="flex items-center justify-center py-8 border-2 border-dashed border-slate-200 rounded-2xl">
+                        <Loader2 className="w-6 h-6 text-violet-600 animate-spin mr-2" />
+                        <span className="text-slate-600">Checking venue availability...</span>
+                      </div>
+                    ) : !eventData.startDate || !eventData.endDate || !eventData.startTime || !eventData.endTime ? (
+                      <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-200 text-center">
+                        <AlertCircle className="w-8 h-8 mx-auto mb-2 text-amber-600" />
+                        <p className="text-sm text-amber-800">Please select date and time first to check venue availability</p>
                       </div>
                     ) : (
-                      <select
-                        value={eventData.venue}
-                        onChange={(e) => setEventData({ ...eventData, venue: e.target.value })}
-                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
-                      >
-                        <option value="">Select venue</option>
-                        {availableResources
-                          .filter((r: any) => r.type === 'hall' || r.type === 'room')
-                          .map((resource: any) => (
-                            <option key={resource._id} value={resource.name}>
-                              {resource.name} (Cap: {resource.capacity})
-                            </option>
-                          ))}
-                      </select>
+                      <div className="space-y-2">
+                        {venueOptions.map((venue) => {
+                          const availability = venueAvailability[venue.value];
+                          const isAvailable = availability?.available !== false;
+                          const isSelected = eventData.venue === venue.value;
+                          const conflicts = availability?.conflicts || [];
+                          
+                          return (
+                            <label
+                              key={venue.value}
+                              className={`flex items-start gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                                !isAvailable
+                                  ? 'border-red-300 bg-red-50 opacity-70 cursor-not-allowed'
+                                  : isSelected
+                                  ? 'border-emerald-400 bg-emerald-50 shadow-md'
+                                  : 'border-slate-200 bg-white hover:border-emerald-200 hover:shadow-sm'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="venue"
+                                value={venue.value}
+                                checked={isSelected}
+                                disabled={!isAvailable}
+                                onChange={(e) => setEventData({ ...eventData, venue: e.target.value })}
+                                className="w-5 h-5 text-emerald-600 focus:ring-2 focus:ring-emerald-200 mt-0.5"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-semibold text-slate-900">{venue.label}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                                      Capacity: {venue.capacity}
+                                    </span>
+                                    {isAvailable ? (
+                                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">
+                                        ✓ Available
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">
+                                        ✗ Booked
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {!isAvailable && conflicts.length > 0 && (
+                                  <div className="mt-2 p-2.5 rounded-lg bg-red-50 border border-red-200">
+                                    <p className="text-xs font-medium text-red-800 mb-1 flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3" />
+                                      Conflicting Event:
+                                    </p>
+                                    {conflicts.slice(0, 2).map((conflict: any, idx: number) => (
+                                      <div key={idx} className="text-xs text-red-700 ml-4 mt-1">
+                                        • <strong>{conflict.title}</strong>
+                                        <br />
+                                        <span className="ml-2">
+                                          {new Date(conflict.startTime).toLocaleString('en-US', { 
+                                            month: 'short', 
+                                            day: 'numeric',
+                                            hour: '2-digit', 
+                                            minute: '2-digit' 
+                                          })} - {new Date(conflict.endTime).toLocaleString('en-US', { 
+                                            hour: '2-digit', 
+                                            minute: '2-digit' 
+                                          })}
+                                        </span>
+                                      </div>
+                                    ))}
+                                    {conflicts.length > 2 && (
+                                      <p className="text-xs text-red-600 ml-4 mt-1">
+                                        +{conflicts.length - 2} more conflict(s)
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
+                  
                   <div>
                     <label className="block text-sm text-slate-700 mb-2">Capacity</label>
                     <input
@@ -1068,116 +1317,56 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm text-slate-700 mb-2">Required Resources</label>
-                    <p className="text-sm text-slate-500 mb-4">
-                      {eventData.startDate && eventData.endDate 
-                        ? 'Select the resources you need - availability is checked based on your event timing'
-                        : 'Please set event dates first to check resource availability'}
-                    </p>
-                    
-                    {loadingResources ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
-                      </div>
-                    ) : availableResources.length > 0 ? (
-                      <div className="space-y-3">
-                        {availableResources.map((resource) => {
-                          const isSelected = eventData.resources.includes(resource.name);
-                          return (
-                            <label 
-                              key={resource._id} 
-                              className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                                isSelected 
-                                  ? 'border-violet-500 bg-violet-50' 
-                                  : resource.isAvailable 
-                                    ? 'border-slate-200 hover:bg-slate-50' 
-                                    : 'border-red-200 bg-red-50 opacity-60'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                disabled={!resource.isAvailable}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setEventData({ ...eventData, resources: [...eventData.resources, resource.name] });
-                                  } else {
-                                    setEventData({ ...eventData, resources: eventData.resources.filter(r => r !== resource.name) });
-                                  }
-                                }}
-                                className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-200 mt-0.5"
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="font-medium text-slate-900">{resource.name}</span>
-                                  {resource.isAvailable ? (
-                                    <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                                      Available
-                                    </span>
-                                  ) : (
-                                    <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">
-                                      Booked
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-sm text-slate-600 space-y-1">
-                                  <div className="flex items-center gap-4">
-                                    <span className="flex items-center gap-1">
-                                      <MapPin className="w-3 h-3" />
-                                      {resource.location}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <Users className="w-3 h-3" />
-                                      {resource.capacity} capacity
-                                    </span>
-                                  </div>
-                                  {resource.features && resource.features.length > 0 && (
-                                    <div className="text-xs text-slate-500">
-                                      Features: {resource.features.slice(0, 3).join(', ')}
-                                      {resource.features.length > 3 && ` +${resource.features.length - 3} more`}
-                                    </div>
-                                  )}
-                                  {!resource.isAvailable && resource.conflicts && resource.conflicts.length > 0 && (
-                                    <div className="text-xs text-red-600 mt-1">
-                                      Conflict: Booked {new Date(resource.conflicts[0].startTime).toLocaleTimeString()} - {new Date(resource.conflicts[0].endTime).toLocaleTimeString()}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 text-slate-500">
-                        <MapPin className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>No resources available. Please contact administrator.</p>
-                      </div>
-                    )}
-                    
-                    {!eventData.startDate || !eventData.endDate && (
-                      <div className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-                        <AlertCircle className="w-4 h-4 inline mr-2" />
-                        Set event dates in the Schedule step to check resource availability
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div>
                     <label className="block text-sm text-slate-700 mb-2">
-                      Registration Form Link 
+                      Additional Resources
                       <span className="text-slate-400 font-normal ml-1">(Optional)</span>
                     </label>
-                    <p className="text-sm text-slate-500 mb-3">Add a Google Form, Typeform, or any registration link</p>
-                    <div className="relative">
-                      <input
-                        type="url"
-                        value={eventData.formLink}
-                        onChange={(e) => setEventData({ ...eventData, formLink: e.target.value })}
-                        placeholder="https://forms.google.com/..."
-                        className="w-full px-4 py-3 pl-10 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
-                      />
-                      <ExternalLink className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <p className="text-sm text-slate-500 mb-4">Select any additional resources you need for your event</p>
+                    
+                    <div className="space-y-2">
+                      {[
+                        { name: 'Sound System', icon: '🔊' },
+                        { name: 'Microphones (2)', icon: '🎤' },
+                        { name: 'Projector & Screen', icon: '📽️' },
+                        { name: 'Stage Lighting', icon: '💡' },
+                        { name: 'Extra Chairs (50)', icon: '🪑' },
+                        { name: 'Extra Tables (10)', icon: '🪑' },
+                        { name: 'Refreshments & Snacks', icon: '🍪' },
+                        { name: 'Water Bottles (100)', icon: '💧' },
+                        { name: 'Whiteboard & Markers', icon: '📝' },
+                        { name: 'Name Badges & Lanyards', icon: '🏷️' },
+                        { name: 'Photography Equipment', icon: '📸' },
+                        { name: 'Decorations & Banners', icon: '🎨' },
+                        { name: 'Registration Desk Setup', icon: '🎫' },
+                        { name: 'First Aid Kit', icon: '⚕️' },
+                      ].map((resource) => (
+                        <label
+                          key={resource.name}
+                          className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                            eventData.resources.includes(resource.name)
+                              ? 'border-emerald-400 bg-emerald-50 shadow-sm'
+                              : 'border-slate-200 bg-white hover:border-emerald-200 hover:shadow-sm'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={eventData.resources.includes(resource.name)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEventData({ ...eventData, resources: [...eventData.resources, resource.name] });
+                              } else {
+                                setEventData({ ...eventData, resources: eventData.resources.filter(r => r !== resource.name) });
+                              }
+                            }}
+                            className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-200"
+                          />
+                          <span className="text-2xl">{resource.icon}</span>
+                          <span className="font-medium text-slate-900 flex-1">{resource.name}</span>
+                          {eventData.resources.includes(resource.name) && (
+                            <Check className="w-5 h-5 text-emerald-600" />
+                          )}
+                        </label>
+                      ))}
                     </div>
                   </div>
                 </div>

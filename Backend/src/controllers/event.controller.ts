@@ -48,6 +48,8 @@ export const createEvent = async (req: AuthRequest, res: Response): Promise<void
       clubs: clubs || [],
       date: eventDate,
       time: eventTime,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
       venue,
       capacity,
       tags: tags || [],
@@ -75,12 +77,22 @@ export const createEvent = async (req: AuthRequest, res: Response): Promise<void
 
 export const getEvents = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { category, status = 'approved', search, page = 1, limit = 20 } = req.query;
+    const { category, status, search, page = 1, limit = 20, venue } = req.query;
 
-    const query: any = { status };
+    const query: any = {};
+
+    // Only filter by status if explicitly provided
+    if (status) {
+      query.status = status;
+    }
 
     if (category && category !== 'all') {
       query.category = category;
+    }
+
+    // Add venue filter for availability checking
+    if (venue) {
+      query.venue = venue;
     }
 
     if (search) {

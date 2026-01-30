@@ -6,11 +6,12 @@ import { authAPI } from '../../services/api';
 interface AuthScreenProps {
   onBack: () => void;
   onLogin: (role: 'student' | 'organizer' | 'admin') => void;
+  initialRole?: 'student' | 'organizer' | 'admin' | null;
 }
 
-export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
-  const [step, setStep] = useState<'role' | 'auth'>('role');
-  const [selectedRole, setSelectedRole] = useState<'student' | 'organizer' | 'admin' | null>(null);
+export default function AuthScreen({ onBack, onLogin, initialRole = null }: AuthScreenProps) {
+  const [step, setStep] = useState<'role' | 'auth'>(initialRole ? 'auth' : 'role');
+  const [selectedRole, setSelectedRole] = useState<'student' | 'organizer' | 'admin' | null>(initialRole);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -137,6 +138,11 @@ export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSignIn = async () => {
+    // TODO: Implement Google Sign In
+    alert('Google Sign In coming soon!');
   };
 
   if (step === 'role') {

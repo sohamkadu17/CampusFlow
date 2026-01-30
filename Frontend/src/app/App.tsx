@@ -12,9 +12,14 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [selectedRole, setSelectedRole] = useState<Role>(null);
 
-  const handleNavigateToAuth = () => {
-    setSelectedRole(null);
-    setCurrentScreen('auth');
+  const handleNavigateToAuth = (role: 'student' | 'organizer' | 'admin' | 'auth') => {
+    if (role === 'auth') {
+      setSelectedRole(null);
+      setCurrentScreen('auth');
+    } else {
+      setSelectedRole(role);
+      setCurrentScreen('auth');
+    }
   };
 
   const handleLogin = (role: 'student' | 'organizer' | 'admin') => {
@@ -28,6 +33,7 @@ export default function App() {
   };
 
   const handleBackToLanding = () => {
+    setSelectedRole(null);
     setCurrentScreen('landing');
   };
 
@@ -46,6 +52,7 @@ export default function App() {
         <AuthScreen 
           onBack={handleBackToLanding}
           onLogin={handleLogin}
+          initialRole={selectedRole}
         />
       )}
 

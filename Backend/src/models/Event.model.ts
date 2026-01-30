@@ -14,6 +14,8 @@ export interface IEvent extends Document {
   }>;
   date: Date;
   time: string;
+  startDate?: Date;
+  endDate?: Date;
   venue: string;
   capacity: number;
   registeredCount: number;
@@ -99,6 +101,14 @@ const eventSchema = new Schema<IEvent>(
       type: String,
       required: false,
       default: '12:00 PM',
+    },
+    startDate: {
+      type: Date,
+      required: false,
+    },
+    endDate: {
+      type: Date,
+      required: false,
     },
     venue: {
       type: String,
