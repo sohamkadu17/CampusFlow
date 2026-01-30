@@ -68,10 +68,11 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
         rulebookUrl: event.rulebookUrl || '',
         imageUrl: event.imageUrl || '', // Event poster
         formLink: event.formLink,
+        budget: event.budget, // Include budget data
         submittedDate: new Date(event.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       }));
       
-      console.log('Transformed events with rulebook URLs:', transformedEvents); // Debug
+      console.log('Events with budget:', transformedEvents.map((e: any) => ({ title: e.title, budget: e.budget }))); // Debug
       
       setPendingEvents(transformedEvents);
     } catch (err: any) {
@@ -110,6 +111,10 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
       setSelectedEvent(null);
       setReviewNotes('');
       loadPendingEvents();
+      // Trigger analytics refresh if available
+      if (typeof (window as any).refreshAnalytics === 'function') {
+        (window as any).refreshAnalytics();
+      }
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to approve event');
     }
@@ -313,9 +318,9 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
 
       {/* Review Modal */}
       {selectedEvent && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end md:items-center justify-center">
-          <div className="bg-white rounded-t-3xl md:rounded-3xl w-full md:max-w-3xl md:max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4">
+          <div className="bg-white rounded-t-3xl md:rounded-3xl w-full md:max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
+            <div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between flex-shrink-0">
               <h2 className="text-2xl text-slate-900">Review Event</h2>
               <button
                 onClick={() => setSelectedEvent(null)}
@@ -325,7 +330,7 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1">
               {/* Event Poster */}
               {selectedEvent.imageUrl && (
                 <div className="mb-6">
@@ -379,6 +384,44 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
                     </div>
                   </div>
                 </div>
+                
+                {/* Budget Information */}
+                {(selectedEvent as any).budget && (
+                  <div className="mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200">
+                    <h4 className="text-sm font-semibold text-amber-900 mb-3 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Budget Request
+                    </h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-xs text-amber-700 mb-1">Requested Amount</div>
+                        <div className="text-lg font-semibold text-amber-900">
+                          ₹{((selectedEvent as any).budget.requested || 0).toLocaleString()}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-amber-700 mb-1">Category</div>
+                        <div className="text-sm font-medium text-amber-900 capitalize">
+                          {(selectedEvent as any).budget.category || 'Not specified'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-amber-700 mb-1">Status</div>
+                        <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-amber-200 text-amber-800">
+                          Pending Review
+                        </span>
+                      </div>
+                    </div>
+                    {(selectedEvent as any).budget.description && (
+                      <div className="mt-3 pt-3 border-t border-amber-200">
+                        <div className="text-xs text-amber-700 mb-1">Budget Breakdown</div>
+                        <p className="text-sm text-amber-900">{(selectedEvent as any).budget.description}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Description */}
@@ -418,7 +461,7 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
                       </a>
                       <a
                         href={selectedEvent.rulebookUrl}
-                        download
+                        download={`${selectedEvent.title.replace(/[^a-z0-9]/gi, '-')}-rulebook.pdf`}
                         className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors flex items-center gap-2 text-xs"
                         title="Download PDF"
                       >
@@ -427,38 +470,14 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
                       </a>
                     </div>
                   </div>
-                  <div className="rounded-2xl border-2 border-slate-200 overflow-hidden bg-slate-50">
+                  <div className="rounded-2xl border-2 border-slate-200 overflow-hidden bg-white">
                     <iframe
-                      src={selectedEvent.rulebookUrl}
-                      className="w-full h-[500px]"
+                      src={`https://docs.google.com/viewer?url=${encodeURIComponent(selectedEvent.rulebookUrl)}&embedded=true`}
+                      className="w-full h-[600px] border-0"
                       title="Event Rulebook PDF"
-                      onError={(e) => {
-                        console.error('Iframe failed to load PDF:', selectedEvent.rulebookUrl);
-                        (e.target as HTMLIFrameElement).style.display = 'none';
-                        const parent = (e.target as HTMLIFrameElement).parentElement;
-                        if (parent) {
-                          parent.innerHTML = `
-                            <div class="flex flex-col items-center justify-center h-[500px] text-center p-6">
-                              <div class="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-4">
-                                <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                </svg>
-                              </div>
-                              <h4 class="text-slate-900 font-medium mb-2">PDF Preview Not Available</h4>
-                              <p class="text-sm text-slate-600 mb-4">Your browser cannot display the PDF inline. Please download or open in a new tab.</p>
-                              <div class="flex gap-2">
-                                <a href="${selectedEvent.rulebookUrl}" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors text-sm font-medium">Open in New Tab</a>
-                                <a href="${selectedEvent.rulebookUrl}" download class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors text-sm font-medium">Download PDF</a>
-                              </div>
-                            </div>
-                          `;
-                        }
-                      }}
                     />
                   </div>
-                  <div className="text-xs text-slate-500 mt-2 px-2 font-mono break-all">
-                    📎 {selectedEvent.rulebookUrl}
-                  </div>
+                  <p className="text-xs text-slate-500 mt-2 text-center">Showing PDF preview • Use buttons above to open or download</p>
                 </div>
               )}
 

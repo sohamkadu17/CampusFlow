@@ -26,6 +26,20 @@ interface AnalyticsData {
     eventTrends: Array<{ _id: { year: number; month: number }; count: number }>;
     avgCapacityUtilization: number;
   };
+  budgetAnalytics: {
+    summary: {
+      totalRequested: number;
+      totalApproved: number;
+      totalSpent: number;
+      eventCount: number;
+    };
+    byCategory: Array<{
+      _id: string;
+      totalRequested: number;
+      totalApproved: number;
+      totalSpent: number;
+    }>;
+  };
   clubAnalytics: {
     clubStats: Record<string, { memberCount: number; eventCount: number }>;
     topClubs: Array<{ clubName: string; metrics: { memberCount: number; eventCount: number } }>;
@@ -54,6 +68,11 @@ export default function AnalyticsDashboard({ onBack }: AnalyticsDashboardProps) 
 
   useEffect(() => {
     loadAnalytics();
+    // Set up global refresh function
+    (window as any).refreshAnalytics = loadAnalytics;
+    return () => {
+      delete (window as any).refreshAnalytics;
+    };
   }, []);
 
   const loadAnalytics = async () => {
@@ -64,8 +83,9 @@ export default function AnalyticsDashboard({ onBack }: AnalyticsDashboardProps) 
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [eventRes, clubRes, resourceRes, userRes] = await Promise.all([
+      const [eventRes, budgetRes, clubRes, resourceRes, userRes] = await Promise.all([
         axios.get(`${API_URL}/analytics/events`, { headers }),
+        axios.get(`${API_URL}/analytics/budget`, { headers }),
         axios.get(`${API_URL}/analytics/clubs`, { headers }),
         axios.get(`${API_URL}/analytics/resources`, { headers }),
         axios.get(`${API_URL}/analytics/users`, { headers }),
@@ -73,6 +93,7 @@ export default function AnalyticsDashboard({ onBack }: AnalyticsDashboardProps) 
 
       setAnalytics({
         eventAnalytics: eventRes.data.data,
+        budgetAnalytics: budgetRes.data.data,
         clubAnalytics: clubRes.data.data,
         resourceAnalytics: resourceRes.data.data,
         userAnalytics: userRes.data.data,
@@ -109,13 +130,24 @@ export default function AnalyticsDashboard({ onBack }: AnalyticsDashboardProps) 
   const exportEventAnalytics = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/analytics/export/events`, {
+      const response = await axios.get(`${API_URL}/analytics/export?type=events`, {
         headers: { Authorization: `Bearer ${token}` },
+        responseType: 'text',
       });
       
-      exportToCSV(response.data.data, 'event_analytics');
-    } catch (err) {
-      alert('Export failed. Please try again.');
+      // Create blob and download
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `events-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Export error:', err);
+      alert(err.response?.data?.message || 'Export failed. Please try again.');
     }
   };
 
@@ -317,6 +349,68 @@ export default function AnalyticsDashboard({ onBack }: AnalyticsDashboardProps) 
                 </div>
               </div>
             </div>
+
+            {/* Budget Overview */}
+            {analytics.budgetAnalytics && analytics.budgetAnalytics.summary && (
+              <div className="bg-white rounded-2xl p-6 border border-slate-200">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-slate-900">Budget Overview</h3>
+                  <DollarSign className="w-5 h-5 text-slate-400" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-4 rounded-xl bg-blue-50 border border-blue-200">
+                    <div className="text-sm text-blue-700 mb-2">Total Requested</div>
+                    <div className="text-2xl font-bold text-blue-900">
+                      ₹{analytics.budgetAnalytics.summary.totalRequested?.toLocaleString() || 0}
+                    </div>
+                    <div className="text-xs text-blue-600 mt-1">
+                      {analytics.budgetAnalytics.summary.eventCount || 0} events
+                    </div>
+                  </div>
+                  <div className="text-center p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <div className="text-sm text-emerald-700 mb-2">Total Approved</div>
+                    <div className="text-2xl font-bold text-emerald-900">
+                      ₹{analytics.budgetAnalytics.summary.totalApproved?.toLocaleString() || 0}
+                    </div>
+                    <div className="text-xs text-emerald-600 mt-1">
+                      {analytics.budgetAnalytics.summary.totalRequested > 0 
+                        ? `${((analytics.budgetAnalytics.summary.totalApproved / analytics.budgetAnalytics.summary.totalRequested) * 100).toFixed(1)}% approved`
+                        : 'N/A'}
+                    </div>
+                  </div>
+                  <div className="text-center p-4 rounded-xl bg-orange-50 border border-orange-200">
+                    <div className="text-sm text-orange-700 mb-2">Total Spent</div>
+                    <div className="text-2xl font-bold text-orange-900">
+                      ₹{analytics.budgetAnalytics.summary.totalSpent?.toLocaleString() || 0}
+                    </div>
+                    <div className="text-xs text-orange-600 mt-1">
+                      {analytics.budgetAnalytics.summary.totalApproved > 0
+                        ? `${((analytics.budgetAnalytics.summary.totalSpent / analytics.budgetAnalytics.summary.totalApproved) * 100).toFixed(1)}% utilized`
+                        : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Budget by Category */}
+                {analytics.budgetAnalytics.byCategory && analytics.budgetAnalytics.byCategory.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-slate-200">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-4">Budget by Category</h4>
+                    <div className="space-y-3">
+                      {analytics.budgetAnalytics.byCategory.map((cat) => (
+                        <div key={cat._id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                          <span className="text-sm font-medium text-slate-700 capitalize">{cat._id}</span>
+                          <div className="flex items-center gap-6 text-sm">
+                            <span className="text-blue-700">Req: ₹{cat.totalRequested?.toLocaleString() || 0}</span>
+                            <span className="text-emerald-700">App: ₹{cat.totalApproved?.toLocaleString() || 0}</span>
+                            <span className="text-orange-700">Spent: ₹{cat.totalSpent?.toLocaleString() || 0}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
