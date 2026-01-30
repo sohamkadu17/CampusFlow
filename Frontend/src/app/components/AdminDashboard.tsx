@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { eventAPI } from '../../services/api';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import ResourceBookingCalendar from './ResourceBookingCalendar';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -31,7 +32,7 @@ interface PendingEvent {
 }
 
 export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps) {
-  const [view, setView] = useState<'events' | 'analytics'>('events');
+  const [view, setView] = useState<'events' | 'analytics' | 'resources'>('events');
   const [selectedEvent, setSelectedEvent] = useState<PendingEvent | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [pendingEvents, setPendingEvents] = useState<PendingEvent[]>([]);
@@ -210,6 +211,11 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
         <AnalyticsDashboard onBack={() => setView('events')} />
       )}
 
+      {/* Show Resource Calendar if view is resources */}
+      {view === 'resources' && (
+        <ResourceBookingCalendar onBack={() => setView('events')} />
+      )}
+
       {/* Show Event Approvals if view is events */}
       {view === 'events' && (
         <>
@@ -221,13 +227,22 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
                 <h1 className="text-3xl text-slate-900 mb-2">Event Approvals</h1>
                 <p className="text-slate-600">Review and approve event submissions</p>
               </div>
-              <button
-                onClick={() => setView('analytics')}
-                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors"
-              >
-                <BarChart3 className="w-5 h-5" />
-                <span className="font-medium">View Analytics</span>
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setView('analytics')}
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  <span className="font-medium">View Analytics</span>
+                </button>
+                <button
+                  onClick={() => setView('resources')}
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                >
+                  <MapPin className="w-5 h-5" />
+                  <span className="font-medium">Resource Calendar</span>
+                </button>
+              </div>
             </div>
 
         {error && (

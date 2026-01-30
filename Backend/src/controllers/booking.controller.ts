@@ -94,7 +94,7 @@ const findAlternativeSlots = async (
 
 export const createBooking = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { resourceId, startTime, endTime, purpose, eventId, eventTitle } = req.body;
+    const { resourceId, startTime, endTime, purpose, eventId, eventTitle, clubName } = req.body;
 
     if (!resourceId || !startTime || !endTime || !purpose) {
       throw new AppError('Please provide all required fields', 400);
@@ -143,6 +143,7 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
       resourceId,
       userId: req.user!._id,
       userName: req.user!.name,
+      clubName: clubName || undefined,
       eventId,
       eventTitle,
       startTime: start,

@@ -266,6 +266,7 @@ export const approveEvent = async (req: AuthRequest, res: Response): Promise<voi
     await event.save();
 
     // Notify organizer
+    console.log('Creating notification for organizer:', event.organizerId);
     const notification = await Notification.create({
       userId: event.organizerId,
       type: 'event_approved',
@@ -274,11 +275,15 @@ export const approveEvent = async (req: AuthRequest, res: Response): Promise<voi
       link: `/organizer/events/${event._id}`,
       metadata: { eventId: event._id },
     });
+    console.log('Notification created:', notification._id);
 
     // Emit real-time notification
     const io = req.app.get('io');
     if (io) {
-      emitNotification(io, event.organizerId, notification);
+      console.log('Emitting notification via Socket.IO to user:', event.organizerId.toString());
+      emitNotification(io, event.organizerId.toString(), notification);
+    } else {
+      console.error('❌ Socket.IO instance not found on app');
     }
 
     // Send email

@@ -1,10 +1,10 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IBooking extends Document {
-
   resourceId: string;
   userId: string;
   userName: string;
+  clubName?: string;
   eventId?: string;
   eventTitle?: string;
   startTime: Date;
@@ -34,6 +34,9 @@ const bookingSchema = new Schema<IBooking>(
     userName: {
       type: String,
       required: true,
+    },
+    clubName: {
+      type: String,
     },
     eventId: {
       type: String,

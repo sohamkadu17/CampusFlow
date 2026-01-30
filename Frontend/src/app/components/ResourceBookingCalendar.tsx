@@ -28,6 +28,8 @@ interface Booking {
     _id: string;
     name: string;
   };
+  clubName?: string;
+  eventTitle?: string;
   startTime: Date;
   endTime: Date;
   purpose: string;
@@ -55,6 +57,8 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
     startTime: '',
     endTime: '',
     notes: '',
+    clubName: '',
+    eventTitle: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -73,15 +77,20 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+      console.log('Loading resources from:', `${API_URL}/resources`);
       const response = await axios.get(`${API_URL}/resources`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setResources(response.data.data.resources || []);
-      if (response.data.data.resources?.length > 0) {
-        setSelectedResource(response.data.data.resources[0]);
+      console.log('Resources response:', response.data);
+      const resourcesList = response.data.data?.resources || [];
+      console.log('Loaded resources:', resourcesList.length);
+      setResources(resourcesList);
+      if (resourcesList.length > 0) {
+        setSelectedResource(resourcesList[0]);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load resources:', err);
+      console.error('Error response:', err.response?.data);
     } finally {
       setLoading(false);
     }
@@ -93,13 +102,15 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
       const startDate = getWeekStart(currentDate);
       const endDate = getWeekEnd(currentDate);
       
-      const response = await axios.get(`${API_URL}/resources/${resourceId}/bookings`, {
+      const response = await axios.get(`${API_URL}/bookings`, {
         params: {
+          resourceId,
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
         },
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log('Loaded bookings:', response.data); // Debug
       setBookings(response.data.data.bookings || []);
     } catch (err) {
       console.error('Failed to load bookings:', err);
@@ -121,18 +132,21 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
       endDateTime.setHours(parseInt(bookingForm.endTime.split(':')[0]), parseInt(bookingForm.endTime.split(':')[1]));
 
       await axios.post(
-        `${API_URL}/resources/${selectedResource._id}/bookings`,
+        `${API_URL}/bookings`,
         {
+          resourceId: selectedResource._id,
           startTime: startDateTime.toISOString(),
           endTime: endDateTime.toISOString(),
           purpose: bookingForm.purpose,
+          clubName: bookingForm.clubName || undefined,
+          eventTitle: bookingForm.eventTitle || undefined,
           notes: bookingForm.notes,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setShowBookingModal(false);
-      setBookingForm({ purpose: '', startTime: '', endTime: '', notes: '' });
+      setBookingForm({ purpose: '', startTime: '', endTime: '', notes: '', clubName: '', eventTitle: '' });
       loadBookings(selectedResource._id);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create booking');
@@ -239,6 +253,8 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
       startTime: `${hour.toString().padStart(2, '0')}:00`,
       endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
       notes: '',
+      clubName: '',
+      eventTitle: '',
     });
     setShowBookingModal(true);
   };
@@ -279,25 +295,33 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
 
         {/* Resource Selector */}
         <div className="flex items-center gap-4 overflow-x-auto pb-2">
-          {resources.map((resource) => (
-            <button
-              key={resource._id}
-              onClick={() => setSelectedResource(resource)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all whitespace-nowrap ${
-                selectedResource?._id === resource._id
-                  ? 'border-violet-600 bg-violet-50 text-violet-700'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <MapPin className="w-5 h-5" />
-              <div className="text-left">
-                <div className="font-medium">{resource.name}</div>
-                <div className="text-xs opacity-70">
-                  {resource.type} • {resource.capacity} capacity
+          {resources.length === 0 ? (
+            <div className="w-full text-center py-8">
+              <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-600 font-medium mb-1">No Resources Found</p>
+              <p className="text-sm text-slate-500">Please contact administrator to add resources</p>
+            </div>
+          ) : (
+            resources.map((resource) => (
+              <button
+                key={resource._id}
+                onClick={() => setSelectedResource(resource)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all whitespace-nowrap ${
+                  selectedResource?._id === resource._id
+                    ? 'border-violet-600 bg-violet-50 text-violet-700'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <MapPin className="w-5 h-5" />
+                <div className="text-left">
+                  <div className="font-medium">{resource.name}</div>
+                  <div className="text-xs opacity-70">
+                    {resource.type} • {resource.capacity} capacity
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            ))
+          )}
         </div>
       </div>
 
@@ -402,7 +426,13 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                               }}
                             >
                               <div className="text-xs font-semibold truncate">{booking.purpose}</div>
-                              <div className="text-xs opacity-70 truncate">{booking.userId.name}</div>
+                              {booking.clubName && (
+                                <div className="text-xs font-medium truncate">📍 {booking.clubName}</div>
+                              )}
+                              {booking.eventTitle && (
+                                <div className="text-xs opacity-70 truncate">🎯 {booking.eventTitle}</div>
+                              )}
+                              <div className="text-xs opacity-70 truncate">👤 {booking.userId.name}</div>
                               <div className="text-xs opacity-70 flex items-center gap-1 mt-1">
                                 <Clock className="w-3 h-3" />
                                 {bookingStart.toLocaleTimeString('en-US', {
@@ -461,6 +491,28 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                   value={bookingForm.purpose}
                   onChange={(e) => setBookingForm({ ...bookingForm, purpose: e.target.value })}
                   placeholder="e.g., Team Meeting, Workshop, Event"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Club/Committee Name</label>
+                <input
+                  type="text"
+                  value={bookingForm.clubName}
+                  onChange={(e) => setBookingForm({ ...bookingForm, clubName: e.target.value })}
+                  placeholder="e.g., Tech Club, Cultural Committee"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Event Title (Optional)</label>
+                <input
+                  type="text"
+                  value={bookingForm.eventTitle}
+                  onChange={(e) => setBookingForm({ ...bookingForm, eventTitle: e.target.value })}
+                  placeholder="e.g., Annual Tech Fest"
                   className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-200"
                 />
               </div>

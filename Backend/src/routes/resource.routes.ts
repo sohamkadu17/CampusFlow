@@ -32,6 +32,7 @@ router.delete('/resources/:id', restrictTo('admin'), deleteResource);
 router.post('/bookings', createBooking);
 router.get('/bookings', restrictTo('admin'), getBookings);
 router.get('/bookings/my', getMyBookings);
+router.get('/resources/:id/bookings', getBookings); // Add this for organizers to view by resource
 router.post('/bookings/:id/approve', restrictTo('admin'), approveBooking);
 router.post('/bookings/:id/reject', restrictTo('admin'), rejectBooking);
 router.post('/bookings/:id/cancel', cancelBooking);
