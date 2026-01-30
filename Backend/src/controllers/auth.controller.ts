@@ -9,7 +9,7 @@ import { AppError } from '../middlewares/errorHandler';
 
 export const register = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { email, password, name, role, department, year } = req.body;
+    const { email, password, name, role, department, year, isVerified: preVerified } = req.body;
 
     // Validate required fields
     if (!email || !password || !name || !role) {
@@ -25,9 +25,10 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Generate OTP
-    const otp = generateOTP(6);
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    // For OAuth users (preVerified=true), skip OTP generation
+    const isOAuthUser = preVerified === true;
+    const otp = isOAuthUser ? undefined : generateOTP(6);
+    const otpExpires = isOAuthUser ? undefined : new Date(Date.now() + 10 * 60 * 1000);
 
     // Create user
     const user = await User.create({
@@ -39,15 +40,43 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
       year,
       otp,
       otpExpires,
-      isVerified: false,
+      isVerified: isOAuthUser, // OAuth users are pre-verified
     });
 
-    // Send OTP email
-    try {
-      await sendOTPEmail(email, otp);
-    } catch (emailError) {
-      console.error('Failed to send OTP email:', emailError);
-      // Continue registration even if email fails
+    // Send OTP email only for non-OAuth users
+    if (!isOAuthUser) {
+      try {
+        await sendOTPEmail(email, otp!);
+      } catch (emailError) {
+        console.error('Failed to send OTP email:', emailError);
+        // Continue registration even if email fails
+      }
+    }
+
+    // For OAuth users, generate tokens immediately
+    if (isOAuthUser) {
+      const token = generateToken(user._id.toString());
+      const refreshToken = generateRefreshToken(user._id.toString());
+
+      res.status(201).json({
+        success: true,
+        message: 'Registration successful!',
+        data: {
+          user: {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            department: user.department,
+            year: user.year,
+            profilePicture: user.profilePicture,
+            clubs: user.clubs,
+          },
+          token,
+          refreshToken,
+        },
+      });
+      return;
     }
 
     res.status(201).json({

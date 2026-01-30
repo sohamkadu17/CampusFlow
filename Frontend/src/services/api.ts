@@ -67,6 +67,8 @@ export default api;
 export const authAPI = {
   register: (data: { email: string; password: string; name: string; role: string }) => 
     api.post('/auth/register', data),
+  verifyOTP: (data: { email: string; otp: string }) =>
+    api.post('/auth/verify-otp', data),
   login: (data: { email: string; password: string; role: string }) => 
     api.post('/auth/login', data),
   syncUser: (userData: any) => api.post('/auth/sync', userData),
