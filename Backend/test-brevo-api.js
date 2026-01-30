@@ -1,4 +1,11 @@
-const BREVO_API_KEY = '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';
+require('dotenv').config();
+
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+
+if (!BREVO_API_KEY) {
+  console.error('❌ BREVO_API_KEY not found in environment variables');
+  process.exit(1);
+}
 
 const emailData = {
   sender: { name: "CampusFlow", email: "noreply@campusflow.com" },
