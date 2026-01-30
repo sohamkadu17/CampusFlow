@@ -26,6 +26,8 @@ export interface IEvent extends Document {
     requested: number;
     approved?: number;
     spent?: number;
+    category?: string;
+    description?: string;
     expenses: Array<{
       category: string;
       amount: number;
@@ -141,6 +143,12 @@ const eventSchema = new Schema<IEvent>(
       spent: {
         type: Number,
         default: 0,
+      },
+      category: {
+        type: String,
+      },
+      description: {
+        type: String,
       },
       expenses: [
         {

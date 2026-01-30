@@ -31,6 +31,14 @@ interface Event {
   startDate?: string;
   endDate?: string;
   time?: string;
+  rulebookUrl?: string;
+  budget?: {
+    requested?: number;
+    approved?: number;
+    spent?: number;
+    category?: string;
+    description?: string;
+  };
 }
 
 export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashboardProps) {
@@ -62,6 +70,9 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
     posterImage: null as File | null, // Event poster/banner image
     rulebookFile: null as File | null,
     formLink: '', // Optional Google Form or registration link
+    budgetRequested: '',
+    budgetCategory: '',
+    budgetDescription: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -75,6 +86,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
   const steps = [
     { id: 'details', label: 'Details', icon: FileText },
     { id: 'schedule', label: 'Schedule', icon: Calendar },
+    { id: 'budget', label: 'Budget', icon: FileText },
     { id: 'resources', label: 'Resources', icon: MapPin },
     { id: 'poster', label: 'Poster', icon: Upload },
     { id: 'rulebook', label: 'Rulebook', icon: FileText },
@@ -346,55 +358,11 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
         return;
       }
 
-      const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME || 'demo';
-      const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
-      
-      // Upload poster image to Cloudinary
-      let imageUrl = null;
-      try {
-        const formData = new FormData();
-        formData.append('file', eventData.posterImage);
-        formData.append('upload_preset', uploadPreset);
-        
-        const uploadResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-          formData
-        );
-        
-        imageUrl = uploadResponse.data.secure_url;
-        console.log('Poster image uploaded:', imageUrl);
-      } catch (uploadErr: any) {
-        console.error('Poster upload failed:', uploadErr);
-        setError(`Failed to upload poster image: ${uploadErr.response?.data?.error?.message || uploadErr.message}`);
-        return;
-      }
-
-      // Upload rulebook to Cloudinary (as raw file for PDFs)
-      let rulebookUrl = null;
-      
-      try {
-        const formData = new FormData();
-        formData.append('file', eventData.rulebookFile);
-        formData.append('upload_preset', uploadPreset);
-        
-        const uploadResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`,
-          formData
-        );
-        
-        rulebookUrl = uploadResponse.data.secure_url;
-        console.log('Rulebook uploaded successfully:', rulebookUrl); // Debug
-      } catch (uploadErr: any) {
-        console.error('Rulebook upload failed:', uploadErr);
-        setError(`Failed to upload rulebook: ${uploadErr.response?.data?.error?.message || uploadErr.message}`);
-        return;
-      }
-
-      // Prepare event data
+      // Create event first (without files)
       const eventPayload = {
         title: eventData.title,
         description: eventData.description,
-        category: eventData.category.charAt(0).toUpperCase() + eventData.category.slice(1), // Capitalize first letter
+        category: eventData.category.charAt(0).toUpperCase() + eventData.category.slice(1),
         startDate: new Date(`${eventData.startDate}T${eventData.startTime || '00:00'}`).toISOString(),
         endDate: new Date(`${eventData.endDate || eventData.startDate}T${eventData.endTime || '23:59'}`).toISOString(),
         venue: eventData.venue,
@@ -404,18 +372,67 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
           resourceName: resource,
           status: 'pending'
         })),
-        imageUrl: imageUrl, // Event poster
-        rulebookUrl: rulebookUrl, // Required
         formLink: eventData.formLink || undefined,
-        status: 'draft' // Start as draft
+        budget: {
+          requested: parseFloat(eventData.budgetRequested) || 0,
+          category: eventData.budgetCategory || 'other',
+          description: eventData.budgetDescription || ''
+        },
+        status: 'draft'
       };
 
-      // Create event
       const response = await eventAPI.create(eventPayload);
       const createdEvent = response.data.data;
-
-      // Submit for approval with rulebook
       const eventId = createdEvent._id || createdEvent.id;
+
+      const token = localStorage.getItem('token');
+      const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api';
+
+      // Upload poster via backend API
+      try {
+        const posterFormData = new FormData();
+        posterFormData.append('poster', eventData.posterImage);
+        
+        const posterResponse = await axios.post(
+          `${apiUrl}/events/${eventId}/poster`,
+          posterFormData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+        console.log('Poster uploaded:', posterResponse.data);
+      } catch (uploadErr: any) {
+        console.error('Poster upload failed:', uploadErr);
+        setError(`Failed to upload poster: ${uploadErr.response?.data?.message || uploadErr.message}`);
+        return;
+      }
+
+      // Upload rulebook via backend API
+      try {
+        const rulebookFormData = new FormData();
+        rulebookFormData.append('rulebook', eventData.rulebookFile);
+        
+        await axios.post(
+          `${apiUrl}/events/${eventId}/rulebook`,
+          rulebookFormData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+        console.log('Rulebook uploaded via backend');
+      } catch (uploadErr: any) {
+        console.error('Rulebook upload failed:', uploadErr);
+        setError(`Failed to upload rulebook: ${uploadErr.response?.data?.message || uploadErr.message}`);
+        return;
+      }
+
+      // Submit for approval
       await eventAPI.submitForApproval(eventId);
 
       // Close wizard and reset form
@@ -435,6 +452,9 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
         posterImage: null,
         rulebookFile: null,
         formLink: '',
+        budgetRequested: '',
+        budgetCategory: '',
+        budgetDescription: '',
       });
 
       // Show success message banner
@@ -993,6 +1013,61 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
               {currentStep === 2 && (
                 <div className="space-y-6">
                   <div>
+                    <label className="block text-sm text-slate-700 mb-2">
+                      Budget Requested
+                      <span className="text-red-600 ml-1">*</span>
+                    </label>
+                    <p className="text-sm text-slate-500 mb-3">Enter the total budget amount needed for this event</p>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
+                      <input
+                        type="number"
+                        value={eventData.budgetRequested}
+                        onChange={(e) => setEventData({ ...eventData, budgetRequested: e.target.value })}
+                        placeholder="10000"
+                        className="w-full pl-8 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm text-slate-700 mb-2">Budget Category</label>
+                    <select
+                      value={eventData.budgetCategory}
+                      onChange={(e) => setEventData({ ...eventData, budgetCategory: e.target.value })}
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                    >
+                      <option value="">Select category</option>
+                      <option value="venue">Venue & Equipment</option>
+                      <option value="marketing">Marketing & Promotion</option>
+                      <option value="prizes">Prizes & Rewards</option>
+                      <option value="refreshments">Food & Refreshments</option>
+                      <option value="logistics">Logistics & Transportation</option>
+                      <option value="speakers">Guest Speakers</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-slate-700 mb-2">
+                      Budget Breakdown
+                      <span className="text-slate-400 font-normal ml-1">(Optional)</span>
+                    </label>
+                    <p className="text-sm text-slate-500 mb-3">Provide details on how the budget will be used</p>
+                    <textarea
+                      value={eventData.budgetDescription}
+                      onChange={(e) => setEventData({ ...eventData, budgetDescription: e.target.value })}
+                      placeholder="e.g., Venue rental: ₹5000, Refreshments: ₹3000, Marketing: ₹2000"
+                      rows={4}
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100 resize-none"
+                    ></textarea>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 3 && (
+                <div className="space-y-6">
+                  <div>
                     <label className="block text-sm text-slate-700 mb-2">Required Resources</label>
                     <p className="text-sm text-slate-500 mb-4">
                       {eventData.startDate && eventData.endDate 
@@ -1108,7 +1183,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                 </div>
               )}
 
-              {currentStep === 3 && (
+              {currentStep === 4 && (
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm text-slate-700 mb-2">
@@ -1169,7 +1244,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                 </div>
               )}
 
-              {currentStep === 4 && (
+              {currentStep === 5 && (
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm text-slate-700 mb-2">
@@ -1221,7 +1296,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                 </div>
               )}
 
-              {currentStep === 5 && (
+              {currentStep === 6 && (
                 <div className="space-y-6">
                   <div className="text-center py-8">
                     <div className="w-20 h-20 rounded-3xl bg-emerald-100 flex items-center justify-center mx-auto mb-6">
@@ -1250,6 +1325,12 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                         <div className="flex justify-between">
                           <span className="text-slate-500">Venue:</span>
                           <span className="text-slate-900">{eventData.venue || 'Not set'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Budget:</span>
+                          <span className="text-slate-900">
+                            {eventData.budgetRequested ? `₹${eventData.budgetRequested}` : 'Not set'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-500">Resources:</span>
@@ -1454,6 +1535,59 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                     Delete
                   </button>
                 </div>
+
+                {/* Budget Information */}
+                {selectedEvent.budget && selectedEvent.budget.requested && (
+                  <div className="p-4 bg-slate-50 rounded-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="w-5 h-5 text-slate-600" />
+                      <span className="text-sm font-medium text-slate-900">Budget Information</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-slate-500 block mb-1">Requested</span>
+                        <span className="text-slate-900 font-medium">₹{selectedEvent.budget.requested.toLocaleString()}</span>
+                      </div>
+                      {selectedEvent.budget.approved && (
+                        <div>
+                          <span className="text-slate-500 block mb-1">Approved</span>
+                          <span className="text-emerald-600 font-medium">₹{selectedEvent.budget.approved.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {selectedEvent.budget.spent && (
+                        <div>
+                          <span className="text-slate-500 block mb-1">Spent</span>
+                          <span className="text-blue-600 font-medium">₹{selectedEvent.budget.spent.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                    {selectedEvent.budget.description && (
+                      <p className="mt-3 text-sm text-slate-600">{selectedEvent.budget.description}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Rulebook Section - View Only */}
+                {(selectedEvent as any).rulebookUrl && (
+                  <div className="p-4 bg-blue-50 rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-blue-600" />
+                        <span className="text-sm font-medium text-slate-900">Event Rulebook</span>
+                      </div>
+                      <a
+                        href={(selectedEvent as any).rulebookUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        View Rulebook
+                      </a>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">Click to view the uploaded rulebook PDF</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

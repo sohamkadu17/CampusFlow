@@ -488,3 +488,40 @@ export const uploadRulebook = async (req: AuthRequest, res: Response): Promise<v
     });
   }
 };
+
+export const uploadPoster = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    console.log('Upload poster called. File:', req.file);
+    console.log('Event ID:', req.params.id);
+    console.log('User:', req.user);
+    
+    if (!req.file) {
+      throw new AppError('Please upload an image file', 400);
+    }
+
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      throw new AppError('Event not found', 404);
+    }
+
+    if (event.organizerId !== req.user!._id.toString() && req.user!.role !== 'admin') {
+      throw new AppError('Not authorized to upload poster for this event', 403);
+    }
+
+    event.imageUrl = req.file.path;
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Poster uploaded successfully',
+      data: { imageUrl: event.imageUrl },
+    });
+  } catch (error: any) {
+    console.error('Upload poster error:', error);
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to upload poster',
+    });
+  }
+};

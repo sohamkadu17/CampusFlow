@@ -1,3 +1,7 @@
+// Load environment variables FIRST before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -6,7 +10,6 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 import { connectDatabase } from './config/database';
 import { initializeSocketIO } from './config/socket';
 import { initializeScheduler } from './utils/scheduler.utils';
@@ -22,9 +25,6 @@ import chatRoutes from './routes/chat.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import certificateRoutes from './routes/certificate.routes';
 import sponsorshipRoutes from './routes/sponsorship.routes';
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
