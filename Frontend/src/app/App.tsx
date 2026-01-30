@@ -1,65 +1,115 @@
 import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import AuthScreen from './components/AuthScreen';
 import StudentDashboard from './components/StudentDashboard';
 import OrganizerDashboard from './components/OrganizerDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import AuthCallback from './components/AuthCallback';
 
-type Screen = 'landing' | 'auth' | 'dashboard';
 type Role = 'student' | 'organizer' | 'admin' | null;
 
-export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
-  const [selectedRole, setSelectedRole] = useState<Role>(null);
+function AppContent() {
+  const [selectedRole, setSelectedRole] = useState<Role>(() => {
+    // Initialize from localStorage if available
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        return user.role as Role;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+  const navigate = useNavigate();
 
   const handleNavigateToAuth = () => {
     setSelectedRole(null);
-    setCurrentScreen('auth');
+    navigate('/auth');
   };
 
   const handleLogin = (role: 'student' | 'organizer' | 'admin') => {
     setSelectedRole(role);
-    setCurrentScreen('dashboard');
+    if (role === 'admin') {
+      navigate('/admin');
+    } else if (role === 'organizer') {
+      navigate('/organizer');
+    } else {
+      navigate('/student');
+    }
   };
 
   const handleLogout = () => {
     setSelectedRole(null);
-    setCurrentScreen('landing');
+    localStorage.clear();
+    navigate('/');
   };
 
   const handleBackToLanding = () => {
-    setCurrentScreen('landing');
+    navigate('/');
   };
 
   const handleBackToHome = () => {
     setSelectedRole(null);
-    setCurrentScreen('landing');
+    navigate('/');
   };
 
   return (
     <div className="size-full">
-      {currentScreen === 'landing' && (
-        <LandingPage onNavigate={handleNavigateToAuth} />
-      )}
-
-      {currentScreen === 'auth' && (
-        <AuthScreen 
-          onBack={handleBackToLanding}
-          onLogin={handleLogin}
+      <Routes>
+        <Route path="/" element={<LandingPage onNavigate={handleNavigateToAuth} />} />
+        <Route 
+          path="/auth" 
+          element={
+            <AuthScreen 
+              onBack={handleBackToLanding}
+              onLogin={handleLogin}
+            />
+          } 
         />
-      )}
-
-      {currentScreen === 'dashboard' && selectedRole === 'student' && (
-        <StudentDashboard onLogout={handleLogout} onHome={handleBackToHome} />
-      )}
-
-      {currentScreen === 'dashboard' && selectedRole === 'organizer' && (
-        <OrganizerDashboard onLogout={handleLogout} onHome={handleBackToHome} />
-      )}
-
-      {currentScreen === 'dashboard' && selectedRole === 'admin' && (
-        <AdminDashboard onLogout={handleLogout} onHome={handleBackToHome} />
-      )}
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route 
+          path="/student" 
+          element={
+            selectedRole === 'student' ? (
+              <StudentDashboard onLogout={handleLogout} onHome={handleBackToHome} />
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          } 
+        />
+        <Route 
+          path="/organizer" 
+          element={
+            selectedRole === 'organizer' ? (
+              <OrganizerDashboard onLogout={handleLogout} onHome={handleBackToHome} />
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          } 
+        />
+        <Route 
+          path="/admin" 
+          element={
+            selectedRole === 'admin' ? (
+              <AdminDashboard onLogout={handleLogout} onHome={handleBackToHome} />
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          } 
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
