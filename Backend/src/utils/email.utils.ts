@@ -7,7 +7,7 @@ interface EmailOptions {
   html?: string;
 }
 
-// Create transporter for Brevo (Sendinblue)
+// Create transporter with Brevo SMTP
 const transporter = nodemailer.createTransport({
   host: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
   port: parseInt(process.env.BREVO_SMTP_PORT || '587'),
@@ -18,20 +18,54 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendEmail = async (options: EmailOptions): Promise<void> => {
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || 'CampusFlow <noreply@campusflow.com>',
-    to: options.to,
-    subject: options.subject,
-    text: options.text,
-    html: options.html,
-  };
+// Brevo API fallback using fetch
+const sendViaBrevoAPI = async (options: EmailOptions): Promise<void> => {
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': process.env.BREVO_API_KEY || '',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      sender: { 
+        name: 'CampusFlow', 
+        email: process.env.EMAIL_FROM?.match(/<(.+)>/)?.[1] || 'soham.kadu24@vit.edu'
+      },
+      to: [{ email: options.to }],
+      subject: options.subject,
+      htmlContent: options.html || options.text
+    })
+  });
 
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Brevo API error: ${JSON.stringify(error)}`);
+  }
+};
+
+export const sendEmail = async (options: EmailOptions): Promise<void> => {
   try {
+    // Try Brevo API first (more reliable)
+    if (process.env.BREVO_API_KEY) {
+      await sendViaBrevoAPI(options);
+      console.log(`✅ Email sent successfully to ${options.to} via Brevo API`);
+      return;
+    }
+
+    // Fallback to SMTP
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || '"CampusFlow" <soham.kadu24@vit.edu>',
+      to: options.to,
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+    };
+
     await transporter.sendMail(mailOptions);
-    console.log(`Email sent successfully to ${options.to}`);
+    console.log(`✅ Email sent successfully to ${options.to} via SMTP`);
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('❌ Error sending email:', error);
     throw new Error('Email could not be sent');
   }
 };
