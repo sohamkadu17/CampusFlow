@@ -109,10 +109,26 @@ export const getEvents = async (req: AuthRequest, res: Response): Promise<void> 
 
     const total = await Event.countDocuments(query);
 
+    // Check if user is registered for each event
+    let eventsWithRegistrationStatus: any[] = events;
+    if (req.user) {
+      const { Registration } = require('../models/Registration.model');
+      const userRegistrations = await Registration.find({ userId: req.user._id }).select('eventId');
+      const registeredEventIds = new Set(userRegistrations.map((r: any) => r.eventId.toString()));
+      
+      eventsWithRegistrationStatus = events.map(event => {
+        const eventObj = event.toObject();
+        return {
+          ...eventObj,
+          isRegistered: registeredEventIds.has(event._id.toString())
+        };
+      });
+    }
+
     res.status(200).json({
       success: true,
       data: {
-        events,
+        events: eventsWithRegistrationStatus,
         pagination: {
           page: Number(page),
           limit: Number(limit),

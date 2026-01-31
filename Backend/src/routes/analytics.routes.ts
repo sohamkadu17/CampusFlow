@@ -8,6 +8,9 @@ import {
   getUserAnalytics,
   getLeaderboard,
   exportAnalyticsToCSV,
+  getUserEngagement,
+  getEventTrends,
+  getClubGrowth,
 } from '../controllers/analytics.controller';
 
 const router = Router();
@@ -22,5 +25,8 @@ router.get('/budget', getBudgetAnalytics);
 router.get('/users', getUserAnalytics);
 router.get('/leaderboard', getLeaderboard);
 router.get('/export', exportAnalyticsToCSV);
+router.get('/engagement', getUserEngagement);
+router.get('/trends', getEventTrends);
+router.get('/club-growth', getClubGrowth);
 
 export default router;

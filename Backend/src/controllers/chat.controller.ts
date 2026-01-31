@@ -7,11 +7,24 @@ import { emitToChatRoom } from '../config/socket';
 
 export const getChatRooms = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // Return all rooms so students can see organizer-created discussion rooms
-    // Organizers create rooms, students can join them
-    const rooms = await ChatRoom.find({})
+    const userId = req.user!._id.toString();
+    const userRole = req.user!.role;
+    
+    // Build query based on access control
+    const query: any = {
+      $or: [
+        // User is a participant
+        { participants: userId },
+        // Public rooms allowed for user's role
+        { isPrivate: false, allowedRoles: userRole },
+        // Admin can see all rooms
+        ...(userRole === 'admin' ? [{}] : [])
+      ]
+    };
+
+    const rooms = await ChatRoom.find(query)
       .sort({ 'lastMessage.timestamp': -1 })
-      .limit(50); // Limit to prevent performance issues
+      .limit(50);
 
     res.status(200).json({
       success: true,
@@ -65,14 +78,23 @@ export const getChatMessages = async (req: AuthRequest, res: Response): Promise<
     const { roomId } = req.params;
     const { page = 1, limit = 50 } = req.query;
 
-    // Verify room exists
+    // Verify room exists and user has access
     const room = await ChatRoom.findById(roomId);
     if (!room) {
       throw new AppError('Chat room not found', 404);
     }
 
-    // Allow all authenticated users to view messages (public discussion model)
-    // Students can see all organizer-created discussion rooms
+    // Check access: user must be participant OR room must be public with allowed role OR user is admin
+    const userId = req.user!._id.toString();
+    const userRole = req.user!.role;
+    const hasAccess = 
+      room.participants.includes(userId) ||
+      (!room.isPrivate && room.allowedRoles?.includes(userRole)) ||
+      userRole === 'admin';
+
+    if (!hasAccess) {
+      throw new AppError('You do not have access to this chat room', 403);
+    }
 
     const messages = await ChatMessage.find({ roomId })
       .sort({ createdAt: -1 })

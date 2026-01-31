@@ -7,6 +7,8 @@ export interface IChatRoom extends Document {
   participants: string[];
   eventId?: string;
   clubId?: string;
+  isPrivate: boolean; // Private rooms require explicit membership
+  allowedRoles?: ('student' | 'organizer' | 'admin')[]; // Roles allowed to join
   lastMessage?: {
     text: string;
     senderId: string;
@@ -41,6 +43,14 @@ const chatRoomSchema = new Schema<IChatRoom>(
     clubId: {
       type: String,
     },
+    isPrivate: {
+      type: Boolean,
+      default: true, // Default to private for security
+    },
+    allowedRoles: [{
+      type: String,
+      enum: ['student', 'organizer', 'admin'],
+    }],
     lastMessage: {
       text: String,
       senderId: {

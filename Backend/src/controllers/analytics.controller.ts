@@ -359,9 +359,32 @@ export const getLeaderboard = async (_req: AuthRequest, res: Response): Promise<
 export const getUserAnalytics = async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const totalUsers = await User.countDocuments();
-    const studentCount = await User.countDocuments({ role: 'student' });
-    const organizerCount = await User.countDocuments({ role: 'organizer' });
-    const adminCount = await User.countDocuments({ role: 'admin' });
+    
+    // Users by role
+    const usersByRole = await User.aggregate([
+      { $group: { _id: '$role', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    // Active users (users who have registered for events or logged in recently)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const activeUsers = await User.countDocuments({
+      $or: [
+        { lastLogin: { $gte: thirtyDaysAgo } },
+        { updatedAt: { $gte: thirtyDaysAgo } }
+      ]
+    });
+
+    // New users this month
+    const firstDayOfMonth = new Date();
+    firstDayOfMonth.setDate(1);
+    firstDayOfMonth.setHours(0, 0, 0, 0);
+    
+    const newUsersThisMonth = await User.countDocuments({
+      createdAt: { $gte: firstDayOfMonth },
+    });
 
     // Users by department
     const usersByDepartment = await User.aggregate([
@@ -369,29 +392,14 @@ export const getUserAnalytics = async (_req: AuthRequest, res: Response): Promis
       { $sort: { count: -1 } },
     ]);
 
-    // Recent registrations (last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const recentUsers = await User.countDocuments({
-      createdAt: { $gte: thirtyDaysAgo },
-    });
-
     res.status(200).json({
       success: true,
       data: {
-        overview: {
-          totalUsers,
-          studentCount,
-          organizerCount,
-          adminCount,
-          recentUsers,
-        },
+        totalUsers,
+        activeUsers,
+        usersByRole,
+        newUsersThisMonth,
         usersByDepartment,
-        roleDistribution: [
-          { role: 'Student', count: studentCount },
-          { role: 'Organizer', count: organizerCount },
-          { role: 'Admin', count: adminCount },
-        ],
       },
     });
   } catch (error: any) {
@@ -442,6 +450,229 @@ export const exportAnalyticsToCSV = async (req: AuthRequest, res: Response): Pro
     res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || 'Failed to export analytics',
+    });
+  }
+};
+
+// User Engagement Analytics
+export const getUserEngagement = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const dateFilter: any = {};
+    if (startDate) dateFilter.$gte = new Date(startDate as string);
+    if (endDate) dateFilter.$lte = new Date(endDate as string);
+
+    // Active users (registered for at least one event)
+    const activeUsers = await Registration.distinct('userId', 
+      dateFilter.$gte ? { createdAt: dateFilter } : {}
+    );
+
+    // Registration frequency per user
+    const userActivity = await Registration.aggregate([
+      ...(dateFilter.$gte ? [{ $match: { createdAt: dateFilter } }] : []),
+      {
+        $group: {
+          _id: '$userId',
+          registrationCount: { $sum: 1 },
+          lastActivity: { $max: '$createdAt' }
+        }
+      },
+      {
+        $bucket: {
+          groupBy: '$registrationCount',
+          boundaries: [1, 2, 5, 10, 20, 1000],
+          default: '20+',
+          output: {
+            count: { $sum: 1 },
+            users: { $push: '$_id' }
+          }
+        }
+      }
+    ]);
+
+    // Most engaged users (top 10)
+    const topUsers = await Registration.aggregate([
+      ...(dateFilter.$gte ? [{ $match: { createdAt: dateFilter } }] : []),
+      {
+        $group: {
+          _id: '$userId',
+          eventCount: { $sum: 1 },
+          attendanceCount: { $sum: { $cond: ['$attended', 1, 0] } }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: '$user' },
+      {
+        $project: {
+          name: '$user.name',
+          email: '$user.email',
+          eventCount: 1,
+          attendanceCount: 1,
+          attendanceRate: { 
+            $multiply: [{ $divide: ['$attendanceCount', '$eventCount'] }, 100] 
+          }
+        }
+      },
+      { $sort: { eventCount: -1 } },
+      { $limit: 10 }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        activeUserCount: activeUsers.length,
+        userActivityDistribution: userActivity,
+        topUsers
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get user engagement analytics'
+    });
+  }
+};
+
+// Event Popularity Trends
+export const getEventTrends = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { months = 6 } = req.query;
+    const monthsAgo = new Date();
+    monthsAgo.setMonth(monthsAgo.getMonth() - Number(months));
+
+    // Event creation trends
+    const creationTrends = await Event.aggregate([
+      { $match: { createdAt: { $gte: monthsAgo } } },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          count: { $sum: 1 },
+          avgCapacity: { $avg: '$capacity' },
+          avgRegistrations: { $avg: '$registeredCount' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    // Registration conversion rate (registrations vs capacity)
+    const conversionRates = await Event.aggregate([
+      { $match: { status: 'approved', createdAt: { $gte: monthsAgo } } },
+      {
+        $project: {
+          title: 1,
+          category: 1,
+          capacity: 1,
+          registeredCount: 1,
+          conversionRate: {
+            $multiply: [{ $divide: ['$registeredCount', '$capacity'] }, 100]
+          },
+          month: { $month: '$date' }
+        }
+      },
+      {
+        $group: {
+          _id: '$month',
+          avgConversionRate: { $avg: '$conversionRate' },
+          events: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Most popular categories
+    const popularCategories = await Event.aggregate([
+      { $match: { createdAt: { $gte: monthsAgo } } },
+      {
+        $group: {
+          _id: '$category',
+          eventCount: { $sum: 1 },
+          totalRegistrations: { $sum: '$registeredCount' },
+          avgRegistrations: { $avg: '$registeredCount' }
+        }
+      },
+      { $sort: { totalRegistrations: -1 } }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        creationTrends,
+        conversionRates,
+        popularCategories
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get event trends'
+    });
+  }
+};
+
+// Club Growth Analytics
+export const getClubGrowth = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { clubId } = req.query;
+
+    // Member growth over time
+    const memberGrowth = await User.aggregate([
+      { $unwind: '$clubs' },
+      ...(clubId ? [{ $match: { 'clubs.clubId': clubId } }] : []),
+      {
+        $group: {
+          _id: {
+            club: '$clubs.clubId',
+            year: { $year: '$clubs.joinedAt' },
+            month: { $month: '$clubs.joinedAt' }
+          },
+          newMembers: { $sum: 1 },
+          clubName: { $first: '$clubs.clubName' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    // Event hosting frequency
+    const eventFrequency = await Event.aggregate([
+      { $unwind: '$clubs' },
+      ...(clubId ? [{ $match: { 'clubs.clubId': clubId } }] : []),
+      {
+        $group: {
+          _id: '$clubs.clubId',
+          clubName: { $first: '$clubs.clubName' },
+          totalEvents: { $sum: 1 },
+          approvedEvents: {
+            $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] }
+          },
+          avgCapacity: { $avg: '$capacity' },
+          totalRegistrations: { $sum: '$registeredCount' }
+        }
+      },
+      { $sort: { totalEvents: -1 } }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        memberGrowth,
+        eventFrequency
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get club growth analytics'
     });
   }
 };

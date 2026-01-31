@@ -220,30 +220,22 @@ export default function AuthScreen({ onBack, onLogin }: AuthScreenProps) {
     try {
       if (!isSignUp) {
         // Login flow - Try backend first, then Supabase
+        const { data } = await authAPI.login({ email, password, role: selectedRole });
+        
+        // Store backend tokens
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('refreshToken', data.data.refreshToken);
+        localStorage.setItem('user', JSON.stringify(data.data.user));
+        
+        // Also sign in to Supabase (optional, for file storage/realtime features)
         try {
-          const { data } = await authAPI.login({ email, password, role: selectedRole });
-          
-          // Store backend tokens
-          localStorage.setItem('token', data.data.token);
-          localStorage.setItem('refreshToken', data.data.refreshToken);
-          localStorage.setItem('user', JSON.stringify(data.data.user));
-          
-          // Also sign in to Supabase (optional, for file storage/realtime features)
-          try {
-            await auth.signIn(email, password);
-          } catch (supabaseError) {
-            console.warn('Supabase sign-in failed:', supabaseError);
-            // Continue anyway since backend login succeeded
-          }
-          
-          onLogin(selectedRole);
-        } catch (backendError: any) {
-          // If backend fails, show more helpful error
-          if (backendError.code === 'ERR_NETWORK' || backendError.message?.includes('Network Error')) {
-            throw new Error('Cannot connect to server. Please ensure the backend is running.');
-          }
-          throw new Error(backendError.response?.data?.message || 'Invalid email or password');
+          await auth.signIn(email, password);
+        } catch (supabaseError) {
+          console.warn('Supabase sign-in failed:', supabaseError);
+          // Continue anyway since backend login succeeded
         }
+        
+        onLogin(selectedRole);
       } else {
         // Registration flow
         const { error: signUpError } = await auth.signUp(email, password, { 

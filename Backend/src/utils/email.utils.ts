@@ -71,7 +71,8 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
     console.log(`✅ Email sent successfully to ${options.to} via SMTP`);
   } catch (error) {
     console.error('❌ Error sending email:', error);
-    throw new Error('Email could not be sent');
+    // Don't throw error - make email failures non-critical
+    console.warn('⚠️ Email sending failed but continuing operation');
   }
 };
 

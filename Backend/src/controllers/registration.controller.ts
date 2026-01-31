@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { Registration } from '../models/Registration.model';
 import { Event } from '../models/Event.model';
 import { Notification } from '../models/Notification.model';
+import { ChatRoom } from '../models/ChatRoom.model';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { AppError } from '../middlewares/errorHandler';
 import { generateQRCode, generateRegistrationNumber } from '../utils/qr.utils';
@@ -102,6 +103,13 @@ export const registerForEvent = async (req: AuthRequest, res: Response): Promise
       metadata: { eventId },
     });
 
+    // Add user to event chat room if it exists
+    const eventChatRoom = await ChatRoom.findOne({ eventId, type: 'event' });
+    if (eventChatRoom && !eventChatRoom.participants.includes(req.user!._id.toString())) {
+      eventChatRoom.participants.push(req.user!._id.toString());
+      await eventChatRoom.save();
+    }
+
     // Emit real-time notification
     const io = req.app.get('io');
     if (io) {
@@ -143,16 +151,37 @@ export const getMyRegistrations = async (req: AuthRequest, res: Response): Promi
     const registrationsWithEvents = await Promise.all(
       registrations.map(async (reg) => {
         const event = await Event.findById(reg.eventId);
+        if (!event) return null;
+        
         return {
-          ...reg.toObject(),
-          event,
+          id: reg._id,
+          registrationNumber: reg.registrationNumber,
+          qrCode: reg.qrCode,
+          attended: reg.attended,
+          createdAt: reg.createdAt,
+          // Include event details for display
+          eventId: event._id,
+          title: event.title,
+          description: event.description,
+          date: event.date,
+          time: event.time,
+          venue: event.venue,
+          category: event.category,
+          organizerName: event.organizerName,
+          clubs: event.clubs,
+          capacity: event.capacity,
+          registeredCount: event.registeredCount,
+          imageUrl: event.imageUrl,
         };
       })
     );
 
+    // Filter out null entries (events that were deleted)
+    const validRegistrations = registrationsWithEvents.filter(r => r !== null);
+
     res.status(200).json({
       success: true,
-      data: { registrations: registrationsWithEvents },
+      data: { registrations: validRegistrations },
     });
   } catch (error: any) {
     res.status(error.statusCode || 500).json({

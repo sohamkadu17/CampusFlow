@@ -11,6 +11,8 @@ export interface IEvent extends Document {
     clubId: string;
     clubName: string;
     contribution?: string;
+    role?: 'primary' | 'collaborator'; // Primary organizer vs collaborating club
+    status?: 'pending' | 'accepted' | 'declined'; // Invitation status
   }>;
   date: Date;
   time: string;

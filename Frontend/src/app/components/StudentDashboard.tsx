@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { 
-  Search, Bell, Home, MessageCircle, Calendar as CalendarIcon,
-  MapPin, Clock, Users, Heart, ChevronRight, QrCode, X, LogOut, User
+  Search, Bell, Settings, LogOut, Home,
+  Calendar as CalendarIcon, Users, MapPin,
+  Clock, User, Filter, Grid, List, Heart,
+  QrCode, CheckCircle2, Download, ChevronRight, ArrowLeft, MessageCircle, X
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
@@ -51,8 +53,7 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
   const [selectedEventForRegistration, setSelectedEventForRegistration] = useState<Event | null>(null);
   const [registering, setRegistering] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const categories = ['all', 'Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar'];
 
@@ -108,6 +109,10 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
     try {
       setRegistering(true);
       const eventId = selectedEventForRegistration._id || selectedEventForRegistration.id;
+      if (!eventId) {
+        alert('Invalid event ID');
+        return;
+      }
       await registrationAPI.register(eventId);
       
       setShowRegistrationModal(false);
@@ -125,7 +130,7 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
     }
   };
 
-  const handleUnregister = async (eventId: string) => {
+  const handleUnregister = async (registrationId: string, eventId: string) => {
     if (!confirm('Are you sure you want to unregister from this event?')) return;
     
     try {
@@ -169,42 +174,38 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
             <div className="flex items-center gap-2.5">
               <button 
                 onClick={() => setView('chat')}
-                className="flex w-10 h-10 rounded-xl bg-white/80 hover:bg-white border border-white/50 items-center justify-center transition-all shadow-md shadow-indigo-500/10"
+                className={`w-10 h-10 rounded-xl ${view === 'chat' ? 'bg-indigo-100' : 'bg-slate-100 hover:bg-slate-200'} flex items-center justify-center transition-colors`}
               >
                 <MessageCircle className="w-5 h-5 text-blue-600" />
               </button>
-              <button 
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative flex w-10 h-10 rounded-xl bg-white/80 hover:bg-white border border-white/50 items-center justify-center transition-all shadow-md shadow-indigo-500/10"
-              >
-                <Bell className="w-5 h-5 text-blue-600" />
-                {notificationCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                    {notificationCount > 9 ? '9+' : notificationCount}
-                  </span>
-                )}
+              <button className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+                <Settings className="w-5 h-5 text-slate-600" />
               </button>
-              <button 
-                onClick={onLogout}
-                className="flex w-10 h-10 rounded-xl bg-red-50 hover:bg-red-100 border border-red-100 items-center justify-center transition-all shadow-md shadow-red-500/10"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5 text-red-600" />
-              </button>
-            </div>
-          </div>
-
-          {/* Search Bar - Mobile Optimized */}
-          <div className="mt-4">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search events, clubs..."
-                className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white/80 border border-white/50 focus:bg-white focus:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all shadow-md shadow-indigo-500/10 text-slate-900 placeholder:text-slate-400"
-              />
+              <div className="h-6 w-px bg-slate-200"></div>
+              {onHome && (
+                <>
+                  <button 
+                    onClick={onHome}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-all"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="text-sm font-medium">Back to Home</span>
+                  </button>
+                  <div className="h-6 w-px bg-slate-200"></div>
+                </>
+              )}
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <User className="w-5 h-5 text-indigo-600" />
+                </div>
+                <button 
+                  onClick={onLogout}
+                  className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                >
+                  <span className="text-sm font-medium">Logout</span>
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -218,75 +219,90 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
 
       {/* Main Content */}
       {view === 'main' && (
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6">
-          {/* Tabs */}
-          <div className="flex items-center gap-2 mb-6 overflow-x-auto scrollbar-hide">
-            <button
-              onClick={() => setActiveTab('discover')}
-              className={`px-6 py-3 rounded-2xl font-semibold whitespace-nowrap transition-all ${
-                activeTab === 'discover'
-                  ? 'bg-gradient-to-r from-blue-600 to-teal-500 text-white shadow-lg shadow-blue-500/30'
-                  : 'bg-white/60 text-slate-600 hover:bg-white/80 border border-white/50'
-              }`}
-            >
-              Discover
-            </button>
-            <button
-              onClick={() => setActiveTab('registered')}
-              className={`px-6 py-3 rounded-2xl font-semibold whitespace-nowrap transition-all ${
-                activeTab === 'registered'
-                  ? 'bg-gradient-to-r from-blue-600 to-teal-500 text-white shadow-lg shadow-blue-500/30'
-                  : 'bg-white/60 text-slate-600 hover:bg-white/80 border border-white/50'
-              }`}
-            >
-              My Events ({registeredEvents.length})
-            </button>
-          </div>
+        <div className="p-6 max-w-[1800px] mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl text-slate-900 mb-2">Welcome back! 👋</h1>
+          <p className="text-slate-600">Discover events, join clubs, and enhance your campus experience</p>
+        </div>
 
-          {/* Category Pills */}
-          {activeTab === 'discover' && (
-            <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide pb-2">
-              {categories.map((cat) => (
+        {/* Tabs */}
+        <div className="flex items-center gap-2 mb-6 border-b border-slate-200">
+          {[
+            { id: 'discover', label: 'Discover Events', icon: Search },
+            { id: 'registered', label: 'My Events', icon: CheckCircle2 },
+            { id: 'clubs', label: 'My Clubs', icon: Users },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-all ${
+                activeTab === tab.id
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <tab.icon className="w-5 h-5" />
+              {tab.label}
+              {tab.id === 'registered' && registeredEvents.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium">
+                  {registeredEvents.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Discover Tab */}
+        {activeTab === 'discover' && (
+          <div>
+            {/* Filters */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Filter className="w-5 h-5 text-slate-600" />
+                <div className="flex gap-2">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-4 py-2 rounded-xl text-sm transition-all ${
+                        selectedCategory === cat
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-5 py-2 rounded-full font-medium whitespace-nowrap transition-all ${
-                    selectedCategory === cat
-                      ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/30'
-                      : 'bg-white/60 text-slate-600 hover:bg-white/80 border border-white/50'
-                  }`}
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-600'}`}
                 >
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  <Grid className="w-5 h-5" />
                 </button>
-              ))}
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-600'}`}
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-          )}
 
-          {/* Discover Tab - 3 Column Grid (Mobile: 1 Column) */}
-          {activeTab === 'discover' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {loading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="animate-pulse backdrop-blur-xl bg-white/60 rounded-3xl border border-white/50 shadow-lg shadow-indigo-500/10 overflow-hidden">
-                    <div className="aspect-video bg-slate-200"></div>
-                    <div className="p-6 space-y-4">
-                      <div className="h-6 bg-slate-200 rounded"></div>
-                      <div className="h-4 bg-slate-200 rounded w-2/3"></div>
-                      <div className="h-4 bg-slate-200 rounded"></div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                filteredEvents.map((event) => (
-                  <motion.div
-                    key={event._id || event.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="backdrop-blur-xl bg-white/60 rounded-3xl border border-white/50 shadow-lg shadow-indigo-500/10 overflow-hidden group hover:shadow-2xl hover:shadow-indigo-500/20 transition-all duration-300"
-                  >
-                    {/* 16:9 Image with Date Badge */}
-                    <div className="relative aspect-video overflow-hidden bg-slate-100">
-                      <ImageWithFallback
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-slate-600">Loading events...</p>
+              </div>
+            ) : (
+              <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'} gap-6`}>
+                {filteredEvents.map((event) => (
+                  <div key={event.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="relative h-48">
+                      <ImageWithFallback 
                         src={event.imageUrl}
                         alt={event.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
@@ -341,128 +357,94 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
                       <button
                         onClick={() => handleRegister(event._id || event.id || '')}
                         disabled={event.registered >= event.capacity}
-                        className="w-full px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-semibold disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed hover:shadow-2xl hover:shadow-blue-500/40 transition-all duration-300 flex items-center justify-center gap-2"
+                        className="w-full px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-semibold disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed hover:shadow-2xl hover:shadow-blue-500/50 hover:scale-105 active:scale-100 transition-all duration-300 flex items-center justify-center gap-2 group/btn relative overflow-hidden"
                       >
-                        {event.registered >= event.capacity ? 'Full' : 'Register Now'}
-                        <ChevronRight className="w-5 h-5" />
+                        <span className="relative z-10 flex items-center gap-2">
+                          {event.registered >= event.capacity ? 'Full' : 'Register Now'}
+                          <ChevronRight className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                        </span>
+                        <div className="absolute inset-0 bg-gradient-to-r from-teal-600 to-blue-600 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
                       </button>
                     </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-          {/* Registered Events Tab */}
-          {activeTab === 'registered' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {registeredEvents.map((event) => (
-                <div
-                  key={event._id || event.id}
-                  className="backdrop-blur-xl bg-white/60 rounded-3xl border border-white/50 shadow-lg shadow-indigo-500/10 overflow-hidden"
-                >
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-slate-900 mb-2">{event.title}</h3>
-                        <p className="text-sm text-teal-600 font-medium">{event.club}</p>
+        {/* Registered Events Tab */}
+        {activeTab === 'registered' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {registeredEvents.map((event) => (
+              <div key={event._id || event.id} className="bg-white rounded-2xl border border-slate-200 p-6">
+                <div className="flex gap-6">
+                  <div className="flex-shrink-0">
+                    <div className="w-32 h-32 bg-slate-100 rounded-xl flex items-center justify-center">
+                      <QrCode className="w-20 h-20 text-slate-400" />
+                    </div>
+                    <p className="text-xs text-slate-500 text-center mt-2">Scan at venue</p>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">{event.title}</h3>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <CalendarIcon className="w-4 h-4" />
+                        {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </div>
-                      <Heart className="w-6 h-6 text-red-500 fill-current" />
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <Clock className="w-4 h-4" />
+                        {event.time}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <MapPin className="w-4 h-4" />
+                        {event.venue}
+                      </div>
+                      <div className="text-sm text-slate-600">
+                        Registration: {event.registrationNumber}
+                      </div>
                     </div>
-
-                    <div className="flex items-center justify-center p-6 bg-white/80 rounded-2xl border border-white/50">
-                      <img src={event.qrCode} alt="QR Code" className="w-48 h-48" />
+                    <div className="flex gap-2">
+                      <button className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors text-sm flex items-center gap-2">
+                        <Download className="w-4 h-4" />
+                        Download QR
+                      </button>
+                      <button
+                        onClick={() => handleUnregister(event._id || event.id || '', event._id || event.id || '')}
+                        className="px-4 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm"
+                      >
+                        Unregister
+                      </button>
                     </div>
-
-                    <div className="text-center">
-                      <p className="text-sm text-slate-600">Registration Number</p>
-                      <p className="text-2xl font-bold text-blue-600">{event.registrationNumber}</p>
-                    </div>
-
-                    <button
-                      onClick={() => handleUnregister(event._id || event.id || '')}
-                      className="w-full px-6 py-3 rounded-2xl bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors"
-                    >
-                      Unregister
-                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+            {registeredEvents.length === 0 && (
+              <div className="col-span-2 text-center py-12">
+                <CalendarIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-xl text-slate-900 mb-2">No Registered Events</h3>
+                <p className="text-slate-600 mb-6">Start exploring and register for exciting campus events!</p>
+                <button
+                  onClick={() => setActiveTab('discover')}
+                  className="px-6 py-3 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-all"
+                >
+                  Discover Events
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         </div>
       )}
 
-      {/* Fixed Bottom Navigation - Mobile Only */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/60 border-t border-white/50 shadow-2xl shadow-indigo-500/20">
-        <div className="flex items-center justify-around px-4 py-3">
-          <button 
-            onClick={() => { setView('main'); setActiveTab('discover'); }}
-            className={`flex flex-col items-center gap-1 min-w-[44px] min-h-[44px] justify-center ${
-              view === 'main' && activeTab === 'discover' ? 'text-blue-600' : 'text-slate-400'
-            }`}
-          >
-            <Home className="w-6 h-6" />
-            <span className="text-xs font-medium">Home</span>
-          </button>
-          <button 
-            className="flex flex-col items-center gap-1 min-w-[44px] min-h-[44px] justify-center text-slate-400"
-          >
-            <Search className="w-6 h-6" />
-            <span className="text-xs font-medium">Search</span>
-          </button>
-          <button 
-            onClick={() => setView('chat')}
-            className={`flex flex-col items-center gap-1 min-w-[44px] min-h-[44px] justify-center ${
-              view === 'chat' ? 'text-blue-600' : 'text-slate-400'
-            }`}
-          >
-            <MessageCircle className="w-6 h-6" />
-            <span className="text-xs font-medium">Messages</span>
-          </button>
-          <button 
-            onClick={() => setView('calendar')}
-            className={`flex flex-col items-center gap-1 min-w-[44px] min-h-[44px] justify-center ${
-              view === 'calendar' ? 'text-blue-600' : 'text-slate-400'
-            }`}
-          >
-            <CalendarIcon className="w-6 h-6" />
-            <span className="text-xs font-medium">Calendar</span>
-          </button>
-          <button 
-            onClick={onLogout}
-            className="flex flex-col items-center gap-1 min-w-[44px] min-h-[44px] justify-center text-slate-400"
-          >
-            <User className="w-6 h-6" />
-            <span className="text-xs font-medium">Profile</span>
-          </button>
-        </div>
-      </nav>
-
       {/* Registration Modal */}
       {showRegistrationModal && selectedEventForRegistration && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="backdrop-blur-xl bg-white/90 rounded-3xl border border-white/50 shadow-2xl shadow-indigo-500/30 w-full max-w-md overflow-hidden"
-          >
-            <div className="p-6 border-b border-slate-200/50">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Register for Event</h2>
-                  <p className="text-sm text-slate-600 mt-1">{selectedEventForRegistration.title}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowRegistrationModal(false);
-                    setSelectedEventForRegistration(null);
-                  }}
-                  className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
-                >
-                  <X className="w-5 h-5 text-slate-600" />
-                </button>
-              </div>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-slate-200">
+              <h2 className="text-2xl font-bold text-slate-900">Register for Event</h2>
+              <p className="text-sm text-slate-600 mt-1">{selectedEventForRegistration.title}</p>
             </div>
 
             <div className="p-6 space-y-6">
@@ -506,7 +488,20 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
                 </button>
               )}
             </div>
-          </motion.div>
+
+            <div className="p-6 border-t border-slate-200">
+              <button
+                onClick={() => {
+                  setShowRegistrationModal(false);
+                  setSelectedEventForRegistration(null);
+                }}
+                disabled={registering}
+                className="w-full px-6 py-3 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

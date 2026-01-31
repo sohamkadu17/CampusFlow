@@ -119,17 +119,21 @@ const AuthCallback: React.FC = () => {
       // Check if profile is complete using the backend user data directly
       const isProfileComplete = backendUser.isProfileComplete !== false;
 
-      // Redirect based on profile completion status
+      // Determine redirect URL
+      let redirectUrl = '/';
+      if (!isProfileComplete) {
+        redirectUrl = '/complete-profile';
+      } else if (backendUser.role === 'admin') {
+        redirectUrl = '/admin';
+      } else if (backendUser.role === 'organizer') {
+        redirectUrl = '/organizer';
+      } else {
+        redirectUrl = '/student';
+      }
+
+      // Use window.location for full page reload to ensure App state is initialized from localStorage
       setTimeout(() => {
-        if (!isProfileComplete) {
-          navigate('/complete-profile');
-        } else if (backendUser.role === 'admin') {
-          navigate('/admin');
-        } else if (backendUser.role === 'organizer') {
-          navigate('/organizer');
-        } else {
-          navigate('/student');
-        }
+        window.location.href = redirectUrl;
       }, 1000);
 
     } catch (err: any) {
@@ -137,9 +141,16 @@ const AuthCallback: React.FC = () => {
       setStatus('error');
       setError(err.message || 'Authentication failed. Please try again.');
       
-      // Redirect back to login after 3 seconds
+      // Clear stored OAuth data to prevent retry loop
+      localStorage.removeItem('pendingRole');
+      localStorage.removeItem('pendingSignupData');
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      
+      // Redirect back to login after 3 seconds using window.location
       setTimeout(() => {
-        navigate('/');
+        window.location.href = '/';
       }, 3000);
     }
   };

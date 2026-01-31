@@ -57,6 +57,7 @@ interface AnalyticsData {
     activeUsers: number;
     usersByRole: Array<{ _id: string; count: number }>;
     newUsersThisMonth: number;
+    usersByDepartment?: Array<{ _id: string; count: number }>;
   };
 }
 
@@ -522,6 +523,9 @@ export default function AnalyticsDashboard({ onBack }: AnalyticsDashboardProps) 
                 <div className="text-3xl font-bold text-emerald-600">
                   {analytics.userAnalytics.activeUsers || 0}
                 </div>
+                <div className="text-xs text-slate-500 mt-2">
+                  Last 30 days
+                </div>
               </div>
 
               <div className="bg-white rounded-2xl p-6 border border-slate-200">
@@ -536,17 +540,51 @@ export default function AnalyticsDashboard({ onBack }: AnalyticsDashboardProps) 
             </div>
 
             {/* Users by Role */}
-            <div className="bg-white rounded-2xl p-6 border border-slate-200">
-              <h3 className="text-lg font-semibold text-slate-900 mb-6">Users by Role</h3>
-              <div className="grid grid-cols-3 gap-4">
-                {(analytics.userAnalytics.usersByRole || []).map((role) => (
-                  <div key={role._id} className="text-center p-6 rounded-xl bg-slate-50">
-                    <div className="text-3xl font-bold text-slate-900 mb-2">{role.count}</div>
-                    <div className="text-sm text-slate-600 capitalize">{role._id}s</div>
-                  </div>
-                ))}
+            {analytics.userAnalytics.usersByRole && analytics.userAnalytics.usersByRole.length > 0 ? (
+              <div className="bg-white rounded-2xl p-6 border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900 mb-6">Users by Role</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {analytics.userAnalytics.usersByRole.map((role) => (
+                    <div key={role._id} className="text-center p-6 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200">
+                      <div className="text-4xl font-bold text-violet-900 mb-2">{role.count}</div>
+                      <div className="text-sm font-medium text-violet-700 capitalize">{role._id}s</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-2xl p-6 border border-slate-200 text-center">
+                <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500">No user role data available</p>
+              </div>
+            )}
+
+            {/* Users by Department */}
+            {analytics.userAnalytics.usersByDepartment && analytics.userAnalytics.usersByDepartment.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900 mb-6">Users by Department</h3>
+                <div className="space-y-3">
+                  {analytics.userAnalytics.usersByDepartment.slice(0, 10).map((dept: any) => {
+                    const maxCount = (analytics.userAnalytics.usersByDepartment && analytics.userAnalytics.usersByDepartment[0]?.count) || 1;
+                    const percentage = (dept.count / maxCount) * 100;
+                    return (
+                      <div key={dept._id} className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium text-slate-700">{dept._id || 'Not Specified'}</span>
+                          <span className="text-slate-500">{dept.count} users</span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all duration-500"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
