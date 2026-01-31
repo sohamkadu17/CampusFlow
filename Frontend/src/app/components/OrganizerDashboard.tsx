@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import { 
-  Sparkles, Plus, Calendar, Users, Settings, Bell, Search, 
+  Sparkles, Plus, Calendar, Users, Bell, Search, 
   LogOut, Upload, FileText, ChevronRight, Check, Clock, 
   AlertCircle, CheckCircle2, XCircle, MapPin, User, ExternalLink, Loader2, ArrowLeft, Home, MessageCircle, CalendarDays, Package
 } from 'lucide-react';
@@ -772,9 +772,6 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                   </div>
                 )}
               </div>
-              <button className="p-2 hover:bg-slate-100 rounded-xl transition-colors animate-fadeIn animate-delay-200">
-                <Settings className="w-5 h-5 text-slate-600" />
-              </button>
               <div className="h-6 w-px bg-slate-200"></div>
               {onHome && (
                 <>

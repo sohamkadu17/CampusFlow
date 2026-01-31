@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { 
   Search, Bell, Home, MessageCircle, Calendar as CalendarIcon,
-  MapPin, Clock, Users, Heart, ChevronRight, QrCode, X
+  MapPin, Clock, Users, Heart, ChevronRight, QrCode, X, LogOut, User
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
-import { eventAPI, registrationAPI } from '../../services/api';
+import { eventAPI, registrationAPI, notificationAPI } from '../../services/api';
 import ChatInterface from './ChatInterface';
+import ResourceBookingCalendar from './ResourceBookingCalendar';
 
 interface StudentDashboardProps {
   onLogout: () => void;
@@ -40,7 +41,7 @@ interface RegisteredEvent extends Event {
 }
 
 export default function StudentDashboard({ onLogout, onHome }: StudentDashboardProps) {
-  const [view, setView] = useState<'main' | 'chat'>('main');
+  const [view, setView] = useState<'main' | 'chat' | 'calendar'>('main');
   const [activeTab, setActiveTab] = useState<'discover' | 'registered'>('discover');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [events, setEvents] = useState<Event[]>([]);
@@ -50,6 +51,8 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
   const [selectedEventForRegistration, setSelectedEventForRegistration] = useState<Event | null>(null);
   const [registering, setRegistering] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const categories = ['all', 'Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar'];
 
@@ -57,8 +60,18 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
     if (view === 'main') {
       loadEvents();
       loadRegisteredEvents();
+      loadNotificationCount();
     }
   }, [view]);
+
+  const loadNotificationCount = async () => {
+    try {
+      const response = await notificationAPI.getUnreadCount();
+      setNotificationCount(response.data.data.count || 0);
+    } catch (err: any) {
+      console.error('Error loading notification count:', err);
+    }
+  };
 
   const loadEvents = async () => {
     try {
@@ -153,18 +166,30 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <button 
                 onClick={() => setView('chat')}
-                className="hidden sm:flex w-10 h-10 rounded-xl bg-white/80 hover:bg-white border border-white/50 items-center justify-center transition-all shadow-md shadow-indigo-500/10"
+                className="flex w-10 h-10 rounded-xl bg-white/80 hover:bg-white border border-white/50 items-center justify-center transition-all shadow-md shadow-indigo-500/10"
               >
                 <MessageCircle className="w-5 h-5 text-blue-600" />
               </button>
-              <button className="relative w-10 h-10 rounded-xl bg-white/80 hover:bg-white border border-white/50 flex items-center justify-center transition-all shadow-md shadow-indigo-500/10">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative flex w-10 h-10 rounded-xl bg-white/80 hover:bg-white border border-white/50 items-center justify-center transition-all shadow-md shadow-indigo-500/10"
+              >
                 <Bell className="w-5 h-5 text-blue-600" />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                  3
-                </span>
+                {notificationCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                )}
+              </button>
+              <button 
+                onClick={onLogout}
+                className="flex w-10 h-10 rounded-xl bg-red-50 hover:bg-red-100 border border-red-100 items-center justify-center transition-all shadow-md shadow-red-500/10"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5 text-red-600" />
               </button>
             </div>
           </div>
@@ -187,6 +212,9 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
 
       {/* Chat Interface */}
       {view === 'chat' && <ChatInterface onBack={() => setView('main')} />}
+
+      {/* Resource Calendar */}
+      {view === 'calendar' && <ResourceBookingCalendar onBack={() => setView('main')} />}
 
       {/* Main Content */}
       {view === 'main' && (
@@ -393,13 +421,20 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
             <span className="text-xs font-medium">Messages</span>
           </button>
           <button 
-            onClick={() => { setView('main'); setActiveTab('registered'); }}
+            onClick={() => setView('calendar')}
             className={`flex flex-col items-center gap-1 min-w-[44px] min-h-[44px] justify-center ${
-              view === 'main' && activeTab === 'registered' ? 'text-blue-600' : 'text-slate-400'
+              view === 'calendar' ? 'text-blue-600' : 'text-slate-400'
             }`}
           >
             <CalendarIcon className="w-6 h-6" />
-            <span className="text-xs font-medium">My Events</span>
+            <span className="text-xs font-medium">Calendar</span>
+          </button>
+          <button 
+            onClick={onLogout}
+            className="flex flex-col items-center gap-1 min-w-[44px] min-h-[44px] justify-center text-slate-400"
+          >
+            <User className="w-6 h-6" />
+            <span className="text-xs font-medium">Profile</span>
           </button>
         </div>
       </nav>

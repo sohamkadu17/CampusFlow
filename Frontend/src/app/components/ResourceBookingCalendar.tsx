@@ -353,15 +353,15 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
   const getBookingColor = (status: Booking['status']) => {
     switch (status) {
       case 'approved':
-        return 'bg-green-100 border-green-300 text-green-800';
+        return 'bg-emerald-100 border-emerald-400 text-emerald-800';
       case 'pending':
-        return 'bg-yellow-100 border-yellow-300 text-yellow-800';
+        return 'bg-amber-100 border-amber-400 text-amber-800';
       case 'rejected':
-        return 'bg-red-100 border-red-300 text-red-800';
+        return 'bg-red-100 border-red-400 text-red-800';
       case 'cancelled':
         return 'bg-slate-100 border-slate-300 text-slate-600';
       default:
-        return 'bg-violet-100 border-violet-300 text-violet-800';
+        return 'bg-blue-100 border-blue-400 text-blue-800';
     }
   };
 
@@ -391,23 +391,26 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
+          <p className="text-slate-600">Loading resources...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 p-6">
+      <div className="sticky top-0 z-40 backdrop-blur-xl bg-white/60 border-b border-white/50 shadow-lg shadow-indigo-500/10 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
-              className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+              className="w-10 h-10 rounded-xl backdrop-blur-xl bg-white/80 hover:bg-white border border-white/50 flex items-center justify-center transition-all shadow-md shadow-indigo-500/10"
             >
-              <ArrowLeft className="w-5 h-5 text-slate-600" />
+              <ArrowLeft className="w-5 h-5 text-blue-600" />
             </button>
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Resource Calendar</h1>
@@ -417,7 +420,7 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
           
           <button
             onClick={goToToday}
-            className="px-4 py-2 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-medium hover:from-blue-700 hover:to-teal-600 shadow-lg shadow-blue-500/30 transition-all"
           >
             Today
           </button>
@@ -436,10 +439,10 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
               <button
                 key={resource._id}
                 onClick={() => setSelectedResource(resource)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all whitespace-nowrap backdrop-blur-xl shadow-lg ${
                   selectedResource?._id === resource._id
-                    ? 'border-violet-600 bg-violet-50 text-violet-700'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                    ? 'border-blue-600 bg-blue-50/80 text-blue-700 shadow-blue-500/20'
+                    : 'border-white/50 bg-white/60 text-slate-700 hover:border-blue-300 shadow-indigo-500/5'
                 }`}
               >
                 <MapPin className="w-5 h-5" />
@@ -456,14 +459,14 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
       </div>
 
       {/* Calendar Navigation */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
+      <div className="backdrop-blur-xl bg-white/60 border-b border-white/50 shadow-md shadow-indigo-500/5 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigateWeek('prev')}
-              className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+              className="w-9 h-9 rounded-xl backdrop-blur-xl bg-white/80 hover:bg-white border border-white/50 flex items-center justify-center transition-all shadow-md shadow-indigo-500/10"
             >
-              <ChevronLeft className="w-5 h-5 text-slate-600" />
+              <ChevronLeft className="w-5 h-5 text-blue-600" />
             </button>
             <h2 className="text-lg font-semibold text-slate-900">
               {getWeekStart(currentDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} -{' '}
@@ -471,24 +474,24 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
             </h2>
             <button
               onClick={() => navigateWeek('next')}
-              className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+              className="w-9 h-9 rounded-xl backdrop-blur-xl bg-white/80 hover:bg-white border border-white/50 flex items-center justify-center transition-all shadow-md shadow-indigo-500/10"
             >
-              <ChevronRight className="w-5 h-5 text-slate-600" />
+              <ChevronRight className="w-5 h-5 text-blue-600" />
             </button>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded bg-green-300" />
+                <div className="w-3 h-3 rounded bg-emerald-400" />
                 <span>Approved</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded bg-yellow-300" />
+                <div className="w-3 h-3 rounded bg-amber-400" />
                 <span>Pending</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded bg-red-300" />
+                <div className="w-3 h-3 rounded bg-red-400" />
                 <span>Rejected</span>
               </div>
             </div>
@@ -509,7 +512,7 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                 </div>
                 <div className={`text-lg font-semibold mt-1 ${
                   day.toDateString() === new Date().toDateString()
-                    ? 'text-violet-600'
+                    ? 'text-blue-600'
                     : 'text-slate-900'
                 }`}>
                   {day.getDate()}
@@ -536,7 +539,7 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                     <div
                       key={dayIndex}
                       className={`flex-1 min-w-[140px] border-l border-slate-100 relative ${
-                        !isBooked ? 'hover:bg-violet-50 cursor-pointer' : ''
+                        !isBooked ? 'hover:bg-blue-50 cursor-pointer' : ''
                       }`}
                       onClick={() => !isBooked && handleSlotClick(day, slot.hour)}
                     >
@@ -587,8 +590,8 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
 
       {/* Booking Modal */}
       {showBookingModal && selectedSlot && selectedResource && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="backdrop-blur-xl bg-white/95 border border-white/50 shadow-2xl shadow-indigo-500/20 rounded-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-slate-900">New Booking</h3>
               <button
@@ -600,12 +603,12 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
             </div>
 
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-violet-50 border border-violet-200">
-                <div className="flex items-center gap-2 text-violet-700 mb-2">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-teal-50 border border-blue-200">
+                <div className="flex items-center gap-2 text-blue-700 mb-2">
                   <MapPin className="w-4 h-4" />
                   <span className="font-medium">{selectedResource.name}</span>
                 </div>
-                <div className="text-sm text-violet-600">
+                <div className="text-sm text-blue-600">
                   {selectedSlot.date.toLocaleDateString('en-US', {
                     weekday: 'long',
                     month: 'long',
@@ -632,7 +635,7 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                   value={bookingForm.clubName}
                   onChange={(e) => setBookingForm({ ...bookingForm, clubName: e.target.value })}
                   placeholder="e.g., Tech Club, Cultural Committee"
-                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                 />
               </div>
 
@@ -643,7 +646,7 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                   value={bookingForm.eventTitle}
                   onChange={(e) => setBookingForm({ ...bookingForm, eventTitle: e.target.value })}
                   placeholder="e.g., Annual Tech Fest"
-                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                 />
               </div>
 
@@ -654,7 +657,7 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                     type="time"
                     value={bookingForm.startTime}
                     onChange={(e) => setBookingForm({ ...bookingForm, startTime: e.target.value })}
-                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                   />
                 </div>
                 <div>
@@ -663,7 +666,7 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                     type="time"
                     value={bookingForm.endTime}
                     onChange={(e) => setBookingForm({ ...bookingForm, endTime: e.target.value })}
-                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                   />
                 </div>
               </div>
@@ -675,7 +678,7 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                   onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
                   placeholder="Additional details..."
                   rows={3}
-                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-200 resize-none"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 resize-none"
                 />
               </div>
 
@@ -696,7 +699,7 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                 <button
                   onClick={createBooking}
                   disabled={submitting || !bookingForm.purpose || !bookingForm.startTime || !bookingForm.endTime}
-                  className="flex-1 px-4 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:bg-slate-300 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-medium hover:from-blue-700 hover:to-teal-600 disabled:from-slate-300 disabled:to-slate-300 shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
                 >
                   {submitting ? (
                     <>

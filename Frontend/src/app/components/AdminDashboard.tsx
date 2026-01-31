@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { 
-  Sparkles, Shield, Search, Bell, Settings, LogOut, 
+  Sparkles, Shield, Search, Bell, LogOut, 
   Calendar, Users, MapPin, FileText, CheckCircle2, 
   AlertCircle, Clock, ChevronLeft, User, Download, ArrowLeft, BarChart3
 } from 'lucide-react';
-import { eventAPI } from '../../services/api';
+import { eventAPI, notificationAPI } from '../../services/api';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import ResourceBookingCalendar from './ResourceBookingCalendar';
 
@@ -38,12 +38,20 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
   const [pendingEvents, setPendingEvents] = useState<PendingEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   useEffect(() => {
     if (view === 'events') {
       loadPendingEvents();
     }
   }, [view]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
 
   const loadPendingEvents = async () => {
     try {
@@ -100,6 +108,31 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
       ]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadNotifications = async () => {
+    try {
+      setLoadingNotifications(true);
+      const [notifResponse, countResponse] = await Promise.all([
+        notificationAPI.getAll(),
+        notificationAPI.getUnreadCount()
+      ]);
+      setNotifications(notifResponse.data.data.notifications || []);
+      setUnreadCount(countResponse.data.data.count || 0);
+    } catch (err: any) {
+      console.error('Error loading notifications:', err);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await notificationAPI.markAsRead(notificationId);
+      await loadNotifications();
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
     }
   };
 
@@ -167,15 +200,75 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
                   className="pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 w-64 focus:outline-none focus:ring-2 focus:ring-violet-200"
                 />
               </div>
-              <button className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors relative">
-                <Bell className="w-5 h-5 text-slate-600" />
-                {pendingEvents.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-violet-500 rounded-full"></span>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors relative"
+                >
+                  <Bell className="w-5 h-5 text-slate-600" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notifications Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 top-12 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                      <h3 className="font-semibold text-slate-900">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <span className="text-xs text-blue-600 font-medium">
+                          {unreadCount} unread
+                        </span>
+                      )}
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {loadingNotifications ? (
+                        <div className="p-8 text-center text-slate-500">
+                          Loading...
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="p-8 text-center text-slate-500">
+                          No notifications
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif._id}
+                            className={`p-4 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${
+                              !notif.isRead ? 'bg-blue-50/50' : ''
+                            }`}
+                            onClick={() => {
+                              if (!notif.isRead) {
+                                handleMarkAsRead(notif._id);
+                              }
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                                !notif.isRead ? 'bg-blue-600' : 'bg-slate-300'
+                              }`}></div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-slate-900 mb-1">{notif.message}</p>
+                                <p className="text-xs text-slate-500">
+                                  {new Date(notif.createdAt).toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 )}
-              </button>
-              <button className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
-                <Settings className="w-5 h-5 text-slate-600" />
-              </button>
+              </div>
               <div className="h-6 w-px bg-slate-200"></div>
               {onHome && (
                 <>
