@@ -624,7 +624,7 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
                   value={bookingForm.purpose}
                   onChange={(e) => setBookingForm({ ...bookingForm, purpose: e.target.value })}
                   placeholder="e.g., Team Meeting, Workshop, Event"
-                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                 />
               </div>
 
