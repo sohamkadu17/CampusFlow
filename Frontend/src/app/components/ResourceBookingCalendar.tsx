@@ -77,16 +77,96 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      console.log('Loading resources from:', `${API_URL}/resources`);
-      const response = await axios.get(`${API_URL}/resources`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log('Resources response:', response.data);
-      const resourcesList = response.data.data?.resources || [];
-      console.log('Loaded resources:', resourcesList.length);
-      setResources(resourcesList);
-      if (resourcesList.length > 0) {
-        setSelectedResource(resourcesList[0]);
+      
+      // Define venue resources (matching the venue options from OrganizerDashboard)
+      const venueResources: Resource[] = [
+        {
+          _id: 'venue_old_seminar',
+          name: 'Old Seminar Hall',
+          type: 'venue',
+          capacity: 100,
+          location: 'Academic Block A',
+          amenities: ['Projector', 'Sound System', 'AC'],
+          status: 'available',
+        },
+        {
+          _id: 'venue_new_seminar',
+          name: 'New Seminar Hall',
+          type: 'venue',
+          capacity: 100,
+          location: 'Academic Block B',
+          amenities: ['Projector', 'Sound System', 'AC', 'Smart Board'],
+          status: 'available',
+        },
+        {
+          _id: 'venue_main_auditorium',
+          name: 'Main Auditorium',
+          type: 'venue',
+          capacity: 500,
+          location: 'Central Building',
+          amenities: ['Stage', 'Professional Sound System', 'Lighting', 'AC'],
+          status: 'available',
+        },
+        {
+          _id: 'venue_lawn',
+          name: 'Lawn',
+          type: 'venue',
+          capacity: 200,
+          location: 'Outdoor Area',
+          amenities: ['Open Air', 'Portable Stage Available'],
+          status: 'available',
+        },
+        {
+          _id: 'venue_conf_a',
+          name: 'Conference Room A',
+          type: 'venue',
+          capacity: 50,
+          location: 'Administrative Block',
+          amenities: ['Projector', 'Whiteboard', 'AC', 'Video Conferencing'],
+          status: 'available',
+        },
+        {
+          _id: 'venue_conf_b',
+          name: 'Conference Room B',
+          type: 'venue',
+          capacity: 50,
+          location: 'Administrative Block',
+          amenities: ['Projector', 'Whiteboard', 'AC'],
+          status: 'available',
+        },
+        {
+          _id: 'venue_open_air',
+          name: 'Open Air Theatre',
+          type: 'venue',
+          capacity: 300,
+          location: 'Campus Grounds',
+          amenities: ['Stage', 'Sound System', 'Outdoor Seating'],
+          status: 'available',
+        },
+      ];
+      
+      // Try to load additional resources from backend (if any)
+      try {
+        console.log('Loading resources from:', `${API_URL}/resources`);
+        const response = await axios.get(`${API_URL}/resources`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('Resources response:', response.data);
+        const backendResources = response.data.data?.resources || [];
+        
+        // Combine venue resources with any backend resources
+        const allResources = [...venueResources, ...backendResources];
+        setResources(allResources);
+        if (allResources.length > 0) {
+          setSelectedResource(allResources[0]);
+        }
+      } catch (err) {
+        // If backend resources fail, just use venue resources
+        console.log('Using venue resources only');
+        setResources(venueResources);
+        if (venueResources.length > 0) {
+          setSelectedResource(venueResources[0]);
+        }
       }
     } catch (err: any) {
       console.error('Failed to load resources:', err);
@@ -102,18 +182,68 @@ export default function ResourceBookingCalendar({ onBack }: ResourceBookingCalen
       const startDate = getWeekStart(currentDate);
       const endDate = getWeekEnd(currentDate);
       
-      const response = await axios.get(`${API_URL}/bookings`, {
-        params: {
-          resourceId,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-        },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log('Loaded bookings:', response.data); // Debug
-      setBookings(response.data.data.bookings || []);
+      // Fetch both regular bookings and event-based venue bookings
+      const [bookingsResponse, eventsResponse] = await Promise.all([
+        axios.get(`${API_URL}/bookings`, {
+          params: {
+            resourceId,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+          },
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch((error) => {
+          console.error('Failed to fetch bookings, falling back to empty list:', error);
+          return { data: { data: { bookings: [] } } };
+        }), // Handle if bookings endpoint doesn't exist
+        
+        // Fetch all approved/pending events to show venue bookings
+        axios.get(`${API_URL}/events`, {
+          params: {
+            limit: 100,
+          },
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      ]);
+      
+      console.log('Loaded bookings:', bookingsResponse.data);
+      console.log('Loaded events:', eventsResponse.data);
+      
+      const regularBookings = bookingsResponse.data.data?.bookings || [];
+      const events = eventsResponse.data.data?.events || [];
+      
+      // Convert approved events to booking format for calendar display
+      const eventBookings = events
+        .filter((event: any) => {
+          // Only show approved events (not pending, draft, cancelled, or rejected)
+          return event.status === 'approved';
+        })
+        .filter((event: any) => {
+          // Match venue name with resource name
+          const venueName = event.venue?.toLowerCase() || '';
+          const resourceName = selectedResource?.name?.toLowerCase() || '';
+          return venueName === resourceName;
+        })
+        .map((event: any) => ({
+          _id: `event_${event._id}`,
+          resourceId: resourceId,
+          userId: {
+            _id: event.organizerId || 'unknown',
+            name: event.organizerName || 'Event Organizer',
+          },
+          clubName: event.clubs?.[0]?.clubName || 'Campus Event',
+          eventTitle: event.title,
+          startTime: new Date(event.startDate || event.date),
+          endTime: new Date(event.endDate || event.date),
+          purpose: event.description || 'Event',
+          status: 'approved',
+          approvedBy: 'Admin',
+        }));
+      
+      // Combine both types of bookings
+      setBookings([...regularBookings, ...eventBookings]);
     } catch (err) {
       console.error('Failed to load bookings:', err);
+      setBookings([]);
     }
   };
 

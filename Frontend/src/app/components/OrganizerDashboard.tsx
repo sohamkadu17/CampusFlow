@@ -72,6 +72,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
   
   const [eventData, setEventData] = useState({
     title: '',
+    clubName: '',
     description: '',
     category: '',
     startDate: '',
@@ -83,7 +84,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
     resources: [] as string[],
     posterImage: null as File | null, // Event poster/banner image
     rulebookFile: null as File | null,
-    formLink: '', // Optional Google Form or registration link
+    formLink: '', // Google Form registration link - REQUIRED
     budgetRequested: '',
     budgetCategory: '',
     budgetDescription: '',
@@ -486,6 +487,18 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
         return;
       }
 
+      // Validate Google Form link is required
+      if (!eventData.formLink || !eventData.formLink.trim()) {
+        setError('Google Form registration link is required');
+        return;
+      }
+
+      // Validate Google Form link format
+      if (!eventData.formLink.includes('forms.gle') && !eventData.formLink.includes('docs.google.com/forms')) {
+        setError('Please provide a valid Google Forms link');
+        return;
+      }
+
       // Check file sizes before upload
       const posterSize = eventData.posterImage.size / (1024 * 1024); // MB
       const rulebookSize = eventData.rulebookFile.size / (1024 * 1024); // MB
@@ -505,6 +518,10 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
         title: eventData.title,
         description: eventData.description,
         category: eventData.category.charAt(0).toUpperCase() + eventData.category.slice(1),
+        clubs: eventData.clubName ? [{
+          clubId: `club_${Date.now()}`,
+          clubName: eventData.clubName,
+        }] : [],
         startDate: new Date(`${eventData.startDate}T${eventData.startTime || '00:00'}`).toISOString(),
         endDate: new Date(`${eventData.endDate || eventData.startDate}T${eventData.endTime || '23:59'}`).toISOString(),
         venue: eventData.venue,
@@ -514,7 +531,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
           resourceName: resource,
           status: 'pending'
         })),
-        formLink: eventData.formLink || undefined,
+        formLink: eventData.formLink,
         budget: {
           requested: parseFloat(eventData.budgetRequested) || 0,
           category: eventData.budgetCategory || 'other',
@@ -607,6 +624,7 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
       setCurrentStep(0);
       setEventData({
         title: '',
+        clubName: '',
         description: '',
         category: '',
         startDate: '',
@@ -1071,6 +1089,16 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                     />
                   </div>
                   <div>
+                    <label className="block text-sm text-slate-700 mb-2">Club Name</label>
+                    <input
+                      type="text"
+                      value={eventData.clubName}
+                      onChange={(e) => setEventData({ ...eventData, clubName: e.target.value })}
+                      placeholder="e.g., Computer Science Club, Cultural Committee"
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm text-slate-700 mb-2">Description</label>
                     <textarea
                       value={eventData.description}
@@ -1482,6 +1510,34 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                       </label>
                     </div>
                   </div>
+                  
+                  {/* Google Forms Registration Link - REQUIRED */}
+                  <div className="border-t border-slate-200 pt-6 mt-6">
+                    <h4 className="text-sm font-medium text-slate-700 mb-4 flex items-center gap-2">
+                      <span>📝</span>
+                      Student Registration Link <span className="text-red-500">*</span>
+                    </h4>
+                    <p className="text-sm text-slate-500 mb-4">
+                      Create a Google Form for student registration and paste the link here. Students will fill this form to register for your event.
+                    </p>
+                    
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-2">
+                        Google Form Link <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={eventData.formLink}
+                        onChange={(e) => setEventData({ ...eventData, formLink: e.target.value })}
+                        placeholder="https://forms.gle/abc123... or https://docs.google.com/forms/..."
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white focus:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                        required
+                      />
+                      <p className="text-xs text-slate-400 mt-1">
+                        Students will click "Register" and be directed to this form. After filling the form, they'll confirm on the platform.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1792,7 +1848,10 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
                 Registrations - {selectedEvent.title}
               </h2>
               <button 
-                onClick={() => setShowRegistrations(false)}
+                onClick={() => {
+                  setShowRegistrations(false);
+                  fetchEvents(); // Refresh events to update registration count
+                }}
                 className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 <XCircle className="w-6 h-6 text-slate-600" />
@@ -1800,6 +1859,13 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
             </div>
             
             <div className="flex-1 overflow-y-auto p-6">
+              <div className="mb-4 p-4 bg-emerald-50 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-emerald-700 font-medium">Total Registrations</span>
+                  <span className="text-2xl font-bold text-emerald-900">{registrations.length}</span>
+                </div>
+              </div>
+              
               {registrations.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />

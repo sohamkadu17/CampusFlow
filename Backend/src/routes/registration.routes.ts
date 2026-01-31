@@ -6,6 +6,7 @@ import {
   unregisterFromEvent,
   checkInAttendee,
   getEventRegistrations,
+  exportRegistrations,
 } from '../controllers/registration.controller';
 
 const router = Router();
@@ -17,5 +18,6 @@ router.get('/my', getMyRegistrations);
 router.delete('/:eventId', unregisterFromEvent);
 router.post('/checkin', checkInAttendee);
 router.get('/event/:eventId', getEventRegistrations);
+router.get('/event/:eventId/export', exportRegistrations);
 
 export default router;

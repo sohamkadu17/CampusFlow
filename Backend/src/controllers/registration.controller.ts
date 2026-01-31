@@ -60,9 +60,37 @@ export const registerForEvent = async (req: AuthRequest, res: Response): Promise
       registrationNumber,
     });
 
+    console.log('Registration created:', {
+      id: registration._id,
+      userId: req.user!._id,
+      eventId,
+      registrationNumber,
+      timestamp: new Date().toISOString()
+    });
+
     // Update event registered count
     event.registeredCount += 1;
     await event.save();
+
+    console.log('Event updated:', {
+      eventId,
+      eventTitle: event.title,
+      newRegisteredCount: event.registeredCount,
+      capacity: event.capacity,
+      timestamp: new Date().toISOString()
+    });
+
+    // Verify the registration was saved
+    const savedRegistration = await Registration.findById(registration._id);
+    if (!savedRegistration) {
+      throw new AppError('Failed to save registration', 500);
+    }
+
+    // Verify the event count was updated
+    const updatedEvent = await Event.findById(eventId);
+    if (!updatedEvent || updatedEvent.registeredCount !== event.registeredCount) {
+      throw new AppError('Failed to update event registration count', 500);
+    }
 
     // Create notification
     const notification = await Notification.create({
@@ -103,6 +131,12 @@ export const getMyRegistrations = async (req: AuthRequest, res: Response): Promi
   try {
     const registrations = await Registration.find({ userId: req.user!._id }).sort({
       createdAt: -1,
+    });
+
+    console.log('Fetching registrations for user:', {
+      userId: req.user!._id,
+      count: registrations.length,
+      timestamp: new Date().toISOString()
     });
 
     // Populate event details
@@ -150,10 +184,24 @@ export const unregisterFromEvent = async (req: AuthRequest, res: Response): Prom
     // Delete registration
     await Registration.findByIdAndDelete(registration._id);
 
+    console.log('Registration deleted:', {
+      registrationId: registration._id,
+      userId: req.user!._id,
+      eventId,
+      timestamp: new Date().toISOString()
+    });
+
     // Update event registered count
     if (event) {
       event.registeredCount = Math.max(0, event.registeredCount - 1);
       await event.save();
+
+      console.log('Event count decremented:', {
+        eventId,
+        eventTitle: event.title,
+        newRegisteredCount: event.registeredCount,
+        timestamp: new Date().toISOString()
+      });
     }
 
     res.status(200).json({
@@ -207,28 +255,67 @@ export const getEventRegistrations = async (req: AuthRequest, res: Response): Pr
   try {
     const { eventId } = req.params;
 
-    const registrations = await Registration.find({ eventId });
+    const registrations = await Registration.find({ eventId })
+      .populate('userId', 'name email department year')
+      .sort({ createdAt: -1 });
 
-    // Populate user details
-    const registrationsWithUsers = await Promise.all(
-      registrations.map(async (reg) => {
-        const user = await reg.populate('userId', 'name email department year');
-        return user;
-      })
-    );
+    console.log('Fetching registrations for event:', {
+      eventId,
+      count: registrations.length,
+      timestamp: new Date().toISOString()
+    });
 
     res.status(200).json({
       success: true,
-      data: {
-        registrations: registrationsWithUsers,
-        total: registrations.length,
-        attended: registrations.filter((r) => r.attended).length,
-      },
+      data: registrations,
+      total: registrations.length,
+      attended: registrations.filter((r) => r.attended).length,
     });
   } catch (error: any) {
     res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || 'Failed to get event registrations',
+    });
+  }
+};
+
+/**
+ * Export registrations as CSV
+ * GET /api/events/:eventId/registrations/export
+ */
+export const exportRegistrations = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { eventId } = req.params;
+
+    // Check permissions
+    if (req.user!.role !== 'admin' && req.user!.role !== 'organizer') {
+      throw new AppError('Not authorized to export registrations', 403);
+    }
+
+    const registrations = await Registration.find({ eventId }).populate('userId', 'name email');
+
+    // Generate CSV
+    const csvHeaders = 'Name,Email,Registration Number,Registered At,Attended\n';
+    const csvRows = registrations.map((reg) => {
+      const user = reg.userId as any;
+      return [
+        user?.name || 'N/A',
+        user?.email || 'N/A',
+        reg.registrationNumber || '',
+        reg.createdAt ? new Date(reg.createdAt).toLocaleString() : '',
+        reg.attended ? 'Yes' : 'No',
+      ].join(',');
+    }).join('\n');
+
+    const csv = csvHeaders + csvRows;
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=registrations-${eventId}.csv`);
+    res.status(200).send(csv);
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to export registrations',
     });
   }
 };

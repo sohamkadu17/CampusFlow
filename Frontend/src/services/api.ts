@@ -91,8 +91,8 @@ export const eventAPI = {
 };
 
 export const registrationAPI = {
-  register: (eventId: string) => api.post('/registrations/register', { eventId }),
-  getMy: () => api.get('/registrations/my-registrations'),
+  register: (eventId: string) => api.post('/registrations', { eventId }),
+  getMy: () => api.get('/registrations/my'),
   unregister: (eventId: string) => api.delete(`/registrations/${eventId}`),
   checkIn: (registrationNumber: string) => api.post('/registrations/checkin', { registrationNumber }),
 };

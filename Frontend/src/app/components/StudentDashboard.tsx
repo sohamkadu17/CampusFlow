@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
+// NOTE: The previous CalendarDays-based calendar view and its import were
+// intentionally removed from StudentDashboard as part of the calendar feature
+// deprecation (see product decision / tracking ticket as applicable).
 import { 
   Sparkles, Search, Bell, Settings, LogOut, 
   Calendar, Users, MapPin, FileText, Star,
   Clock, User, Filter, Grid, List, Heart,
-  QrCode, CheckCircle2, Download, ChevronRight, ArrowLeft, MessageCircle, CalendarDays
+  QrCode, CheckCircle2, Download, ChevronRight, ArrowLeft, MessageCircle
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { motion, AnimatePresence } from 'motion/react';
 import { eventAPI, registrationAPI } from '../../services/api';
 import ChatInterface from './ChatInterface';
-import ResourceBookingCalendar from './ResourceBookingCalendar';
 
 interface StudentDashboardProps {
   onLogout: () => void;
@@ -17,7 +19,8 @@ interface StudentDashboardProps {
 }
 
 interface Event {
-  id: string;
+  id?: string;
+  _id?: string;
   title: string;
   club: string;
   date: string;
@@ -42,7 +45,7 @@ interface RegisteredEvent extends Event {
 }
 
 export default function StudentDashboard({ onLogout, onHome }: StudentDashboardProps) {
-  const [view, setView] = useState<'main' | 'chat' | 'calendar'>('main');
+  const [view, setView] = useState<'main' | 'chat'>('main');
   const [activeTab, setActiveTab] = useState<'discover' | 'registered' | 'clubs'>('discover');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -50,6 +53,9 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
   const [registeredEvents, setRegisteredEvents] = useState<RegisteredEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showRegistrationModal, setShowRegistrationModal] = useState(false);
+  const [selectedEventForRegistration, setSelectedEventForRegistration] = useState<Event | null>(null);
+  const [registering, setRegistering] = useState(false);
 
   const categories = ['all', 'Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar'];
 
@@ -102,28 +108,38 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
   };
 
   const handleRegister = async (eventId: string) => {
+    // Find the event
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+
+    // Show registration modal
+    setSelectedEventForRegistration(event);
+    setShowRegistrationModal(true);
+  };
+
+  const submitRegistration = async () => {
+    if (!selectedEventForRegistration) return;
+
     try {
-      // Find the event to check if it has a form link
-      const event = events.find(e => e.id === eventId);
-      
-      // If event has a registration form link, open it in new tab
-      if (event?.formLink) {
-        window.open(event.formLink, '_blank', 'noopener,noreferrer');
-        alert('Registration form opened in new tab. Please complete it there.');
-        return;
-      }
-      
-      // Otherwise, use the backend registration system
-      console.log('Attempting to register for event:', eventId);
+      setRegistering(true);
+      const eventId = selectedEventForRegistration._id || selectedEventForRegistration.id;
+      console.log('Registering user for event:', eventId);
       const response = await registrationAPI.register(eventId);
       console.log('Registration response:', response);
-      alert('Registration successful! Check the "My Events" tab to view your QR code.');
+      
+      // Close modal
+      setShowRegistrationModal(false);
+      setSelectedEventForRegistration(null);
+      
+      alert('✅ Registration confirmed! Check the "My Events" tab to view your QR code.');
       loadRegisteredEvents();
       loadEvents(); // Refresh to update registration count
     } catch (err: any) {
       console.error('Registration error:', err);
       const errorMsg = err.response?.data?.message || err.message || 'Registration failed. Please try again.';
       alert(errorMsg);
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -179,12 +195,6 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
               >
                 <MessageCircle className={`w-5 h-5 ${view === 'chat' ? 'text-indigo-600' : 'text-slate-600'}`} />
               </button>
-              <button 
-                onClick={() => setView('calendar')}
-                className={`w-10 h-10 rounded-xl ${view === 'calendar' ? 'bg-indigo-100' : 'bg-slate-100 hover:bg-slate-200'} flex items-center justify-center transition-colors`}
-              >
-                <CalendarDays className={`w-5 h-5 ${view === 'calendar' ? 'text-indigo-600' : 'text-slate-600'}`} />
-              </button>
               <button className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
                 <Settings className="w-5 h-5 text-slate-600" />
               </button>
@@ -221,11 +231,6 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
       {/* Show Chat Interface */}
       {view === 'chat' && (
         <ChatInterface onBack={() => setView('main')} />
-      )}
-
-      {/* Show Resource Booking Calendar */}
-      {view === 'calendar' && (
-        <ResourceBookingCalendar onBack={() => setView('main')} />
       )}
 
       {/* Main Content */}
@@ -448,6 +453,86 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
             )}
           </div>
         )}
+        </div>
+      )}
+
+      {/* Registration Modal */}
+      {showRegistrationModal && selectedEventForRegistration && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-slate-200">
+              <h2 className="text-2xl font-bold text-slate-900">Register for Event</h2>
+              <p className="text-sm text-slate-600 mt-1">{selectedEventForRegistration.title}</p>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {selectedEventForRegistration.formLink ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-3">
+                      Step 1: Fill Registration Form
+                    </label>
+                    <a
+                      href={selectedEventForRegistration.formLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 rounded-xl border-2 border-blue-200 transition-colors"
+                    >
+                      <span className="text-blue-700 font-medium">Open Google Form</span>
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Click the link above to fill out the registration form. After completing the form, return here and click Submit.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-3">
+                      Step 2: Confirm Registration
+                    </label>
+                    <button
+                      onClick={submitRegistration}
+                      disabled={registering}
+                      className="w-full px-6 py-3 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all font-medium"
+                    >
+                      {registering ? 'Submitting...' : 'Submit Registration'}
+                    </button>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Click this button only after you have completed the Google Form.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <p className="text-sm text-slate-600 mb-4">
+                    This event doesn't require a separate form. Click submit to register directly.
+                  </p>
+                  <button
+                    onClick={submitRegistration}
+                    disabled={registering}
+                    className="w-full px-6 py-3 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all font-medium"
+                  >
+                    {registering ? 'Submitting...' : 'Submit Registration'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-slate-200">
+              <button
+                onClick={() => {
+                  setShowRegistrationModal(false);
+                  setSelectedEventForRegistration(null);
+                }}
+                disabled={registering}
+                className="w-full px-6 py-3 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
