@@ -146,9 +146,9 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
       {/* Top Navigation */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
+      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/60 border-b border-white/50 shadow-lg shadow-indigo-500/10">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -196,8 +196,8 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
                 </>
               )}
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
-                  <User className="w-5 h-5 text-violet-600" />
+                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <Bell className="w-5 h-5 text-blue-600 animate-pulse" />
                 </div>
                 <button 
                   onClick={onLogout}
@@ -236,7 +236,7 @@ export default function AdminDashboard({ onLogout, onHome }: AdminDashboardProps
               <div className="flex gap-3">
                 <button
                   onClick={() => setView('analytics')}
-                  className="flex items-center gap-2 px-4 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white hover:shadow-2xl hover:shadow-blue-500/40 transition-all"
                 >
                   <BarChart3 className="w-5 h-5" />
                   <span className="font-medium">View Analytics</span>

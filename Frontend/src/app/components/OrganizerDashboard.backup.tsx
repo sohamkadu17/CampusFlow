@@ -111,11 +111,11 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
   const [events, setEvents] = useState<Event[]>([]);
 
   const statusConfig: Record<EventStatus, { label: string; color: string; bg: string; icon: any }> = {
-    draft: { label: 'Draft', color: 'text-slate-600', bg: 'bg-slate-100 border border-slate-200', icon: Clock },
-    pending: { label: 'Pending Review', color: 'text-teal-700', bg: 'bg-teal-100 border border-teal-200', icon: Clock },
-    approved: { label: 'Approved', color: 'text-emerald-700', bg: 'bg-emerald-100 border border-emerald-200', icon: CheckCircle2 },
-    live: { label: 'Live', color: 'text-blue-700', bg: 'bg-blue-100 border border-blue-200', icon: CheckCircle2 },
-    'changes-requested': { label: 'Changes Requested', color: 'text-red-700', bg: 'bg-red-100 border border-red-200', icon: AlertCircle },
+    draft: { label: 'Draft', color: 'text-slate-600', bg: 'bg-slate-100', icon: Clock },
+    pending: { label: 'Pending Review', color: 'text-amber-700', bg: 'bg-amber-100', icon: Clock },
+    approved: { label: 'Approved', color: 'text-emerald-700', bg: 'bg-emerald-100', icon: CheckCircle2 },
+    live: { label: 'Live', color: 'text-indigo-700', bg: 'bg-indigo-100', icon: CheckCircle2 },
+    'changes-requested': { label: 'Changes Requested', color: 'text-red-700', bg: 'bg-red-100', icon: AlertCircle },
   };
 
   // Fetch events and notifications on mount
@@ -657,9 +657,9 @@ export default function OrganizerDashboard({ onLogout, onHome }: OrganizerDashbo
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Top Navigation */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/60 border-b border-white/50 shadow-lg shadow-indigo-500/10">
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40 animate-fadeInDown">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

@@ -29,3 +29,57 @@
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+/* Glassmorphism Utilities */
+.glass-card {
+  @apply backdrop-blur-xl bg-white/60 border border-white/50 shadow-lg shadow-indigo-500/10;
+}
+
+.glass-card-hover {
+  @apply hover:shadow-2xl hover:shadow-indigo-500/20 transition-all duration-300;
+}
+
+.glass-header {
+  @apply backdrop-blur-xl bg-white/60 border-b border-white/50 shadow-lg shadow-indigo-500/10;
+}
+
+/* Gradient Buttons */
+.btn-primary {
+  @apply bg-gradient-to-r from-blue-600 to-teal-500 text-white shadow-lg shadow-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/40 transition-all duration-300;
+}
+
+.btn-success {
+  @apply bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 hover:shadow-2xl hover:shadow-emerald-500/40 transition-all duration-300;
+}
+
+.btn-danger {
+  @apply bg-red-500 text-white shadow-lg shadow-red-500/30 hover:bg-red-600 hover:shadow-2xl hover:shadow-red-500/40 transition-all duration-300;
+}
+
+/* Status Badges */
+.badge-approved {
+  @apply bg-emerald-100 text-emerald-700 border border-emerald-200;
+}
+
+.badge-pending {
+  @apply bg-teal-100 text-teal-700 border border-teal-200;
+}
+
+.badge-draft {
+  @apply bg-slate-100 text-slate-600 border border-slate-200;
+}
+
+/* Progress Bar Gradient */
+.progress-gradient {
+  @apply bg-gradient-to-r from-teal-500 to-emerald-500 shadow-lg shadow-teal-500/30;
+}
+
+/* Scrollbar Hide */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
