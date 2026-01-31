@@ -30,7 +30,7 @@ const sendViaBrevoAPI = async (options: EmailOptions): Promise<void> => {
     body: JSON.stringify({
       sender: { 
         name: 'CampusFlow', 
-        email: process.env.EMAIL_FROM?.match(/<(.+)>/)?.[1] || 'soham.kadu24@vit.edu'
+        email: process.env.EMAIL_FROM?.match(/<(.+)>/)?.[1] || 'kadusoham91@gmail.com'
       },
       to: [{ email: options.to }],
       subject: options.subject,
@@ -55,7 +55,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
 
     // Fallback to SMTP
     const mailOptions = {
-      from: process.env.EMAIL_FROM || '"CampusFlow" <soham.kadu24@vit.edu>',
+      from: process.env.EMAIL_FROM || '"CampusFlow" <kadusoham91@gmail.com>',
       to: options.to,
       subject: options.subject,
       text: options.text,
