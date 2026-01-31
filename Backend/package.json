@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "init-db": "ts-node scripts/initDatabase.ts",
     "create-admin": "ts-node scripts/createAdmin.ts",
+    "seed-venues": "ts-node scripts/seedVenueAllocations.ts",
     "lint": "eslint src/**/*.ts",
     "test": "jest"
   },
