@@ -54,6 +54,7 @@ export default function StudentDashboard({ onLogout, onHome }: StudentDashboardP
   const [registering, setRegistering] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [notificationCount, setNotificationCount] = useState(0);
 
   const categories = ['all', 'Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar'];
 
